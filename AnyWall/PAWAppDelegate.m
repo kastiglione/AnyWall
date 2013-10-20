@@ -38,7 +38,7 @@ static NSString * const defaultsLocationKey = @"currentLocation";
 	
 	// ****************************************************************************
     // Parse initialization
-    // [Parse setApplicationId:@"APPLICATION_ID" clientKey:@"CLIENT_KEY"];
+	[Parse setApplicationId:@(getenv("PARSE_APPLICATION_ID")) clientKey:@(getenv("PARSE_CLIENT_KEY"))];
 	// ****************************************************************************
 	
 	// Grab values from NSUserDefaults:
