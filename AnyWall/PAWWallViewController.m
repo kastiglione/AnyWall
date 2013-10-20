@@ -6,6 +6,8 @@
 //  Copyright (c) 2013 Parse. All rights reserved.
 //
 
+#import <ReactiveCocoa/ReactiveCocoa.h>
+
 #import "PAWWallViewController.h"
 
 #import "PAWSettingsViewController.h"
@@ -29,6 +31,9 @@
 // posts:
 @property (nonatomic, strong) NSMutableArray *allPosts;
 
+@property (nonatomic, assign) CLLocationAccuracy filterDistance;
+@property (nonatomic, strong) CLLocation *currentLocation;
+
 @end
 
 @implementation PAWWallViewController
@@ -49,8 +54,14 @@
 
 	self.title = @"Anywall";
 
+	// Desired search radius. Use 1000 feet as default.
+	// Assign directly to ivar to prevent side effects for initialization.
+	_filterDistance = [NSUserDefaults.standardUserDefaults doubleForKey:kPAWDefaultsFilterDistanceKey] ?: 1000 * kPAWFeetToMeters;
+
 	// Add the wall posts tableview as a subview with view containment (new in iOS 5.0):
 	self.wallPostsTableViewController = [[PAWWallPostsTableViewController alloc] initWithStyle:UITableViewStylePlain];
+	RAC(self.wallPostsTableViewController, filterDistance) = [RACObserve(self, filterDistance) skip:1];
+	RAC(self.wallPostsTableViewController, currentLocation) = [RACObserve(self, currentLocation) skip:1];
 	[self addChildViewController:self.wallPostsTableViewController];
 
 	self.wallPostsTableViewController.view.frame = CGRectMake(6.0f, 215.0f, 308.0f, self.view.bounds.size.height - 215.0f);
@@ -64,8 +75,6 @@
 											 initWithTitle:@"Settings" style:UIBarButtonItemStylePlain target:self action:@selector(settingsButtonSelected:)];
 	self.navigationItem.titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"Anywall.png"]];
 	
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(distanceFilterDidChange:) name:kPAWFilterDistanceChangeNotification object:nil];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(locationDidChange:) name:kPAWLocationChangeNotification object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(postWasCreated:) name:kPAWPostCreatedNotification object:nil];
 
 	self.mapView.region = MKCoordinateRegionMake(CLLocationCoordinate2DMake(37.332495f, -122.029095f), MKCoordinateSpanMake(0.008516f, 0.021801f));
@@ -88,38 +97,39 @@
 - (void)dealloc {
 	[self.locationManager stopUpdatingLocation];
 	
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWFilterDistanceChangeNotification object:nil];
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWLocationChangeNotification object:nil];
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWPostCreatedNotification object:nil];
 }
 
 #pragma mark - NSNotificationCenter notification handlers
 
-- (void)distanceFilterDidChange:(NSNotification *)note {
-	CLLocationAccuracy filterDistance = [[[note userInfo] objectForKey:kPAWFilterDistanceKey] doubleValue];
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
+- (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
+	_filterDistance = filterDistance;
+
+	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+	[userDefaults setDouble:self.filterDistance forKey:kPAWDefaultsFilterDistanceKey];
+	[userDefaults synchronize];
 
 	if (self.searchRadius == nil) {
-		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:appDelegate.currentLocation.coordinate radius:appDelegate.filterDistance];
+		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:self.currentLocation.coordinate radius:self.filterDistance];
 		[self.mapView addOverlay:self.searchRadius];
 	} else {
-		self.searchRadius.radius = appDelegate.filterDistance;
+		self.searchRadius.radius = self.filterDistance;
 	}
 
 	// Update our pins for the new filter distance:
-	[self updatePostsForLocation:appDelegate.currentLocation withNearbyDistance:filterDistance];
+	[self updatePostsForLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 	
 	// If they panned the map since our last location update, don't recenter it.
 	if (self.trackCurrentLocation) {
 		// Set the map's region centered on their location at 2x filterDistance
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(appDelegate.currentLocation.coordinate, appDelegate.filterDistance * 2.0f, appDelegate.filterDistance * 2.0f);
+		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(self.currentLocation.coordinate, self.filterDistance * 2.0f, self.filterDistance * 2.0f);
 
 		[self.mapView setRegion:newRegion animated:YES];
 		self.trackCurrentLocation = YES;
 	} else {
 		// Just zoom to the new search radius (or maybe don't even do that?)
 		MKCoordinateRegion currentRegion = self.mapView.region;
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(currentRegion.center, appDelegate.filterDistance * 2.0f, appDelegate.filterDistance * 2.0f);
+		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(currentRegion.center, self.filterDistance * 2.0f, self.filterDistance * 2.0f);
 
 		BOOL oldMapPannedValue = self.trackCurrentLocation;
 		[self.mapView setRegion:newRegion animated:YES];
@@ -127,13 +137,13 @@
 	}
 }
 
-- (void)locationDidChange:(NSNotification *)note {
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
+- (void)setCurrentLocation:(CLLocation *)currentLocation {
+	_currentLocation = currentLocation;
 
 	// If they panned the map since our last location update, don't recenter it.
 	if (self.trackCurrentLocation) {
 		// Set the map's region centered on their new location at 2x filterDistance
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(appDelegate.currentLocation.coordinate, appDelegate.filterDistance * 2.0f, appDelegate.filterDistance * 2.0f);
+		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(self.currentLocation.coordinate, self.filterDistance * 2.0f, self.filterDistance * 2.0f);
 
 		BOOL oldMapPannedValue = self.trackCurrentLocation;
 		[self.mapView setRegion:newRegion animated:YES];
@@ -142,21 +152,20 @@
 
 	// If we haven't drawn the search radius on the map, initialize it.
 	if (self.searchRadius == nil) {
-		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:appDelegate.currentLocation.coordinate radius:appDelegate.filterDistance];
+		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:self.currentLocation.coordinate radius:self.filterDistance];
 		[self.mapView addOverlay:self.searchRadius];
 	} else {
-		self.searchRadius.coordinate = appDelegate.currentLocation.coordinate;
+		self.searchRadius.coordinate = self.currentLocation.coordinate;
 	}
 
 	// Update the map with new pins:
-	[self queryForAllPostsNearLocation:appDelegate.currentLocation withNearbyDistance:appDelegate.filterDistance];
+	[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 	// And update the existing pins to reflect any changes in filter distance:
-	[self updatePostsForLocation:appDelegate.currentLocation withNearbyDistance:appDelegate.filterDistance];
+	[self updatePostsForLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 }
 
 - (void)postWasCreated:(NSNotification *)note {
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-	[self queryForAllPostsNearLocation:appDelegate.currentLocation withNearbyDistance:appDelegate.filterDistance];
+	[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 }
 
 #pragma mark - UINavigationBar-based actions
@@ -164,11 +173,16 @@
 - (IBAction)settingsButtonSelected:(id)sender {
 	PAWSettingsViewController *settingsViewController = [[PAWSettingsViewController alloc] initWithNibName:nil bundle:nil];
 	settingsViewController.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
+	settingsViewController.filterDistance = self.filterDistance;
+
+	RAC(self, filterDistance) = [[RACObserve(settingsViewController, filterDistance) skip:1] takeLast:1];
+
 	[self.navigationController presentViewController:settingsViewController animated:YES completion:nil];
 }
 
 - (IBAction)postButtonSelected:(id)sender {
 	PAWWallPostCreateViewController *createPostViewController = [[PAWWallPostCreateViewController alloc] initWithNibName:nil bundle:nil];
+	RAC(createPostViewController, currentLocation) = RACObserve(self, currentLocation);
 	[self.navigationController presentViewController:createPostViewController animated:YES completion:nil];
 }
 
@@ -189,8 +203,7 @@
 
 	CLLocation *currentLocation = self.locationManager.location;
 	if (currentLocation) {
-		PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-		appDelegate.currentLocation = currentLocation;
+		self.currentLocation = currentLocation;
 	}
 }
 
@@ -226,8 +239,7 @@
            fromLocation:(CLLocation *)oldLocation {
 	NSLog(@"%s", __PRETTY_FUNCTION__);
 
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-	appDelegate.currentLocation = newLocation;
+	self.currentLocation = newLocation;
 }
 
 - (void)locationManager:(CLLocationManager *)manager
@@ -297,8 +309,7 @@
 		[self.wallPostsTableViewController highlightCellForPost:post];
 	} else if ([annotation isKindOfClass:[MKUserLocation class]]) {
 		// Center the map on the user's current location:
-		PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(appDelegate.currentLocation.coordinate, appDelegate.filterDistance * 2, appDelegate.filterDistance * 2);
+		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(self.currentLocation.coordinate, self.filterDistance * 2, self.filterDistance * 2);
 
 		[self.mapView setRegion:newRegion animated:YES];
 		self.trackCurrentLocation = YES;

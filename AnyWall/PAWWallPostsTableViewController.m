@@ -6,6 +6,9 @@
 //  Copyright (c) 2013 Parse. All rights reserved.
 //
 
+#import <ReactiveCocoa/ReactiveCocoa.h>
+#import <ReactiveCocoa/EXTScope.h>
+
 static CGFloat const kPAWWallPostTableViewFontSize = 12.f;
 static CGFloat const kPAWWallPostTableViewCellWidth = 230.f; // subject to change.
 
@@ -36,8 +39,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 @implementation PAWWallPostsTableViewController
 
 - (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWFilterDistanceChangeNotification object:nil];
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWLocationChangeNotification object:nil];
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWPostCreatedNotification object:nil];
 }
 
@@ -82,9 +83,14 @@ static NSUInteger const kPAWTableViewMainSection = 0;
         [self.refreshControl addTarget:self action:@selector(refreshControlValueChanged:) forControlEvents:UIControlEventValueChanged];
         self.pullToRefreshEnabled = NO;
     }
-	
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(distanceFilterDidChange:) name:kPAWFilterDistanceChangeNotification object:nil];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(locationDidChange:) name:kPAWLocationChangeNotification object:nil];
+
+	// Requery for nearby posts when either location or radius change.
+	@weakify(self);
+	[[RACSignal	merge:@[ RACObserve(self, currentLocation), RACObserve(self, filterDistance) ]]	subscribeNext:^(id _) {
+		@strongify(self);
+		[self loadObjects];
+	}];
+
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(postWasCreated:) name:kPAWPostCreatedNotification object:nil];
 	
 	self.tableView.backgroundColor = [UIColor clearColor];
@@ -116,13 +122,11 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 	// Query for posts near our current location.
 
 	// Get our current location:
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-	CLLocation *currentLocation = appDelegate.currentLocation;
-	CLLocationAccuracy filterDistance = appDelegate.filterDistance;
+	CLLocationCoordinate2D coordinate = self.currentLocation.coordinate;
 
 	// And set the query to look by location
-	PFGeoPoint *point = [PFGeoPoint geoPointWithLatitude:currentLocation.coordinate.latitude longitude:currentLocation.coordinate.longitude];
-	[query whereKey:kPAWParseLocationKey nearGeoPoint:point withinKilometers:filterDistance / kPAWMetersInAKilometer];
+	PFGeoPoint *point = [PFGeoPoint geoPointWithLatitude:coordinate.latitude longitude:coordinate.longitude];
+	[query whereKey:kPAWParseLocationKey nearGeoPoint:point withinKilometers:self.filterDistance / kPAWMetersInAKilometer];
 	[query includeKey:kPAWParseUserKey];
 
 	return query;
@@ -326,14 +330,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 
 
 #pragma mark - ()
-
-- (void)distanceFilterDidChange:(NSNotification *)note {
-	[self loadObjects];
-}
-
-- (void)locationDidChange:(NSNotification *)note {
-	[self loadObjects];
-}
 
 - (void)postWasCreated:(NSNotification *)note {
 	[self loadObjects];

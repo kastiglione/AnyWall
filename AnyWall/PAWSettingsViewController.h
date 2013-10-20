@@ -12,4 +12,6 @@
 
 @property (nonatomic, strong) IBOutlet UITableView *tableView;
 
+@property (nonatomic, assign) CLLocationAccuracy filterDistance;
+
 @end

@@ -61,8 +61,7 @@
 	}
 
 	// Data prep:
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-	CLLocationCoordinate2D currentCoordinate = appDelegate.currentLocation.coordinate;
+	CLLocationCoordinate2D currentCoordinate = self.currentLocation.coordinate;
 	PFGeoPoint *currentPoint = [PFGeoPoint geoPointWithLatitude:currentCoordinate.latitude longitude:currentCoordinate.longitude];
 	PFUser *user = [PFUser currentUser];
 

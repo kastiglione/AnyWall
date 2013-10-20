@@ -22,17 +22,15 @@ static NSString * const kPAWParseUsernameKey = @"username";
 static NSString * const kPAWParseTextKey = @"text";
 static NSString * const kPAWParseLocationKey = @"location";
 
-// NSNotification userInfo keys:
-static NSString * const kPAWFilterDistanceKey = @"filterDistance";
-static NSString * const kPAWLocationKey = @"location";
-
 // Notification names:
-static NSString * const kPAWFilterDistanceChangeNotification = @"kPAWFilterDistanceChangeNotification";
-static NSString * const kPAWLocationChangeNotification = @"kPAWLocationChangeNotification";
 static NSString * const kPAWPostCreatedNotification = @"kPAWPostCreatedNotification";
 
 // UI strings:
 static NSString * const kPAWWallCantViewPost = @"Can’t view post! Get closer.";
+
+// Defaults keys:
+static NSString * const kPAWDefaultsFilterDistanceKey = @"filterDistance";
+static NSString * const kPAWDefaultsLocationKey = @"currentLocation";
 
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
@@ -44,9 +42,6 @@ static NSString * const kPAWWallCantViewPost = @"Can’t view post! Get closer."
 @property (strong, nonatomic) UIWindow *window;
 
 @property (strong, nonatomic) UIViewController *viewController;
-
-@property (nonatomic, assign) CLLocationAccuracy filterDistance;
-@property (nonatomic, strong) CLLocation *currentLocation;
 
 - (void)presentWelcomeViewController;
 

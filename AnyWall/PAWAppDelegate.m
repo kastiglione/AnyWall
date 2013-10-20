@@ -6,9 +6,6 @@
 //  Copyright (c) 2013 Parse. All rights reserved.
 //
 
-static NSString * const defaultsFilterDistanceKey = @"filterDistance";
-static NSString * const defaultsLocationKey = @"currentLocation";
-
 #import "PAWAppDelegate.h"
 
 #import <Parse/Parse.h>
@@ -37,15 +34,6 @@ static NSString * const defaultsLocationKey = @"currentLocation";
 	[[UINavigationBar appearance] setTintColor:[UIColor colorWithRed:200.0f/255.0f green:83.0f/255.0f blue:70.0f/255.0f alpha:1.0f]];
 	[[UINavigationBar appearance] setBackgroundImage:[UIImage imageNamed:@"bar.png"] forBarMetrics:UIBarMetricsDefault];
 	
-	// Desired search radius:
-	if ([userDefaults doubleForKey:defaultsFilterDistanceKey]) {
-		// use the ivar instead of self.accuracy to avoid an unnecessary write to NAND on launch.
-		self.filterDistance = [userDefaults doubleForKey:defaultsFilterDistanceKey];
-	} else {
-		// if we have no accuracy in defaults, set it to 1000 feet.
-		self.filterDistance = 1000 * kPAWFeetToMeters;
-	}
-
 	UINavigationController *navController = nil;
 
 	if ([PFUser currentUser]) {
@@ -68,30 +56,6 @@ static NSString * const defaultsLocationKey = @"currentLocation";
 
 
 #pragma mark - PAWAppDelegate
-
-- (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
-	_filterDistance = filterDistance;
-
-	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-	[userDefaults setDouble:self.filterDistance forKey:defaultsFilterDistanceKey];
-	[userDefaults synchronize];
-
-	// Notify the app of the filterDistance change:
-	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:[NSNumber numberWithDouble:self.filterDistance] forKey:kPAWFilterDistanceKey];
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[[NSNotificationCenter defaultCenter] postNotificationName:kPAWFilterDistanceChangeNotification object:nil userInfo:userInfo];
-	});
-}
-
-- (void)setCurrentLocation:(CLLocation *)currentLocation {
-	_currentLocation = currentLocation;
-
-	// Notify the app of the location change:
-	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:self.currentLocation forKey:kPAWLocationKey];
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[[NSNotificationCenter defaultCenter] postNotificationName:kPAWLocationChangeNotification object:nil userInfo:userInfo];
-	});
-}
 
 - (void)presentWelcomeViewController {
 	// Go to the welcome screen and have them log in or create an account.

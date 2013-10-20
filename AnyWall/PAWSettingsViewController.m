@@ -11,12 +11,6 @@
 #import "PAWAppDelegate.h"
 #import <Parse/Parse.h>
 
-@interface PAWSettingsViewController ()
-
-@property (nonatomic, assign) CLLocationAccuracy filterDistance;
-
-@end
-
 // UITableView enum-based configuration via Fraser Speirs: http://speirs.org/blog/2008/10/11/a-technique-for-using-uitableview-and-retaining-your-sanity.html
 typedef enum {
 	kPAWSettingsTableViewDistance = 0,
@@ -40,26 +34,6 @@ typedef enum {
 static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 
 @implementation PAWSettingsViewController
-
-- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-    if (self != nil) {
-        // Custom initialization
-		PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-		self.filterDistance = appDelegate.filterDistance;
-    }
-    return self;
-}
-
-
-#pragma mark - Custom setters
-
-// Always fault our filter distance through to the app delegate. We just cache it locally because it's used in the tableview's cells.
-- (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
-	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-	appDelegate.filterDistance = filterDistance;
-	_filterDistance = filterDistance;
-}
 
 #pragma mark - Private helper methods
 

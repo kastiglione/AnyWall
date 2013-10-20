@@ -12,6 +12,9 @@
 
 @interface PAWWallPostsTableViewController : PFQueryTableViewController <PAWWallViewControllerHighlight>
 
+@property (nonatomic, assign) CLLocationAccuracy filterDistance;
+@property (nonatomic, strong) CLLocation *currentLocation;
+
 - (void)highlightCellForPost:(PAWPost *)post;
 - (void)unhighlightCellForPost:(PAWPost *)post;
 

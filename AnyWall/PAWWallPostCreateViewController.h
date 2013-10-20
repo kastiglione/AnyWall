@@ -14,6 +14,8 @@
 @property (nonatomic, strong) IBOutlet UILabel *characterCount;
 @property (nonatomic, strong) IBOutlet UIBarButtonItem *postButton;
 
+@property (nonatomic, strong) CLLocation *currentLocation;
+
 - (IBAction)cancelPost:(id)sender;
 - (IBAction)postPost:(id)sender;
 
