@@ -10,10 +10,8 @@
 
 @interface PAWSearchRadius : NSObject <MKOverlay>
 
-@property (nonatomic, assign) CLLocationCoordinate2D coordinate;
-@property (nonatomic, assign) CLLocationDistance radius;
+@property (nonatomic, assign, readwrite) CLLocationCoordinate2D coordinate;
+@property (nonatomic, assign, readwrite) CLLocationDistance radius;
 @property (nonatomic, assign) MKMapRect boundingMapRect;
-
-- (id)initWithCoordinate:(CLLocationCoordinate2D)coordinate radius:(CLLocationDistance)radius;
 
 @end

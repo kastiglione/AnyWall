@@ -79,6 +79,16 @@
 
 	self.trackCurrentLocation = YES;
 
+	RACSignal *currentCoordinate = [RACObserve(self, currentLocation) map:^(CLLocation* location) {
+		return [NSValue valueWithMKCoordinate:location.coordinate];
+	}];
+
+	// Define search radius overlay.
+	self.searchRadius = [[PAWSearchRadius alloc] init];
+	[self.mapView addOverlay:self.searchRadius];
+	RAC(self.searchRadius, coordinate) = currentCoordinate;
+	RAC(self.searchRadius, radius) = RACObserve(self, filterDistance);
+
 	// Synchronize filter distance to user defaults.
 	RACSignal *filterDistanceUpdates = [[RACObserve(self, filterDistance) skip:1] distinctUntilChanged];
 	[[NSUserDefaults.standardUserDefaults
@@ -109,13 +119,6 @@
 
 - (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
 	_filterDistance = filterDistance;
-
-	if (self.searchRadius == nil) {
-		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:self.currentLocation.coordinate radius:self.filterDistance];
-		[self.mapView addOverlay:self.searchRadius];
-	} else {
-		self.searchRadius.radius = self.filterDistance;
-	}
 
 	// Update our pins for the new filter distance:
 	[self updatePostsForLocation:self.currentLocation withNearbyDistance:self.filterDistance];
@@ -150,14 +153,6 @@
 		[self.mapView setRegion:newRegion animated:YES];
 		self.trackCurrentLocation = oldMapPannedValue;
 	} // else do nothing.
-
-	// If we haven't drawn the search radius on the map, initialize it.
-	if (self.searchRadius == nil) {
-		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:self.currentLocation.coordinate radius:self.filterDistance];
-		[self.mapView addOverlay:self.searchRadius];
-	} else {
-		self.searchRadius.coordinate = self.currentLocation.coordinate;
-	}
 
 	// Update the map with new pins:
 	[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
@@ -271,10 +266,19 @@
 	// Only display the search radius in iOS 5.1+
 	float version = [[[UIDevice currentDevice] systemVersion] floatValue];
 	if (version >= 5.1f && [overlay isKindOfClass:[PAWSearchRadius class]]) {
-		MKOverlayPathView *pathView = [[PAWCircleView alloc] initWithSearchRadius:(PAWSearchRadius *)overlay];
+		MKOverlayPathView *pathView = [[PAWCircleView alloc] initWithOverlay:overlay];
 		pathView.fillColor = [[UIColor darkGrayColor] colorWithAlphaComponent:0.2];
 		pathView.strokeColor = [[UIColor darkGrayColor] colorWithAlphaComponent:0.7];
 		pathView.lineWidth = 2;
+
+		// Redraw the overlay when either location or radius chages.
+		[[[RACSignal
+			merge:@[ RACObserve(self, currentLocation), RACObserve(self, filterDistance) ]]
+			takeUntil:pathView.rac_willDeallocSignal]
+			subscribeNext:^(id x) {
+				[pathView invalidatePath];
+			}];
+
 		return pathView;
 	}
 

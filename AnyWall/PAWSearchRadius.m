@@ -10,15 +10,6 @@
 
 @implementation PAWSearchRadius
 
-- (id)initWithCoordinate:(CLLocationCoordinate2D)coordinate radius:(CLLocationDistance)radius {
-	self = [super init];
-	if (self != nil) {
-		_coordinate = coordinate;
-		_radius = radius;
-	}
-	return self;
-}
-
 - (MKMapRect)boundingMapRect {
 	return MKMapRectWorld;
 }

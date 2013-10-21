@@ -56,29 +56,9 @@
  */
 
 #import "PAWCircleView.h"
+#import "PAWSearchRadius.h"
 
 @implementation PAWCircleView
-
-
-- (id)initWithOverlay:(id <MKOverlay>)overlay {
-	NSAssert(0, @"-initWithSearchRadius: is the designated initializer");
-	return nil;
-}
-
-- (id)initWithSearchRadius:(PAWSearchRadius *)searchRadius;
-{
-	self = [super initWithOverlay:searchRadius];
-	if (self != nil) {
-		[self.searchRadius addObserver:self forKeyPath:@"coordinate" options:0 context:nil];
-		[self.searchRadius addObserver:self forKeyPath:@"radius" options:0 context:nil];
-	}
-    return self;
-}
-
-- (void)dealloc {
-	[self.searchRadius removeObserver:self forKeyPath:@"coordinate"];
-	[self.searchRadius removeObserver:self forKeyPath:@"radius"];
-}
 
 - (PAWSearchRadius *)searchRadius {
     return (PAWSearchRadius *)self.overlay;
@@ -93,13 +73,6 @@
 
 	self.path = path;
 	CGPathRelease(path);
-}
-
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary *)change
-                       context:(void *)context {
-	[self invalidatePath];
 }
 
 @end
