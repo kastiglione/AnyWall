@@ -26,48 +26,48 @@
 
 @implementation PAWPost
 
-- (id)initWithCoordinate:(CLLocationCoordinate2D)aCoordinate andTitle:(NSString *)aTitle andSubtitle:(NSString *)aSubtitle {
+- (id)initWithCoordinate:(CLLocationCoordinate2D)coordinate andTitle:(NSString *)title andSubtitle:(NSString *)subtitle {
 	self = [super init];
-	if (self) {
-		self.coordinate = aCoordinate;
-		self.title = aTitle;
-		self.subtitle = aSubtitle;
-		self.animatesDrop = NO;
+	if (self != nil) {
+		_coordinate = coordinate;
+		_title = [title copy];
+		_subtitle = [subtitle copy];
+		_animatesDrop = NO;
 	}
 	return self;
 }
 
-- (id)initWithPFObject:(PFObject *)anObject {
-	self.object = anObject;
-	self.geopoint = [anObject objectForKey:kPAWParseLocationKey];
-	self.user = [anObject objectForKey:kPAWParseUserKey];
+- (id)initWithPFObject:(PFObject *)object {
+	self.object = object;
+	self.geopoint = [object objectForKey:kPAWParseLocationKey];
+	self.user = [object objectForKey:kPAWParseUserKey];
 
-	[anObject fetchIfNeeded]; 
-	CLLocationCoordinate2D aCoordinate = CLLocationCoordinate2DMake(self.geopoint.latitude, self.geopoint.longitude);
-	NSString *aTitle = [anObject objectForKey:kPAWParseTextKey];
-	NSString *aSubtitle = [[anObject objectForKey:kPAWParseUserKey] objectForKey:kPAWParseUsernameKey];
+	[object fetchIfNeeded]; 
+	CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(self.geopoint.latitude, self.geopoint.longitude);
+	NSString *title = [object objectForKey:kPAWParseTextKey];
+	NSString *subtitle = [[object objectForKey:kPAWParseUserKey] objectForKey:kPAWParseUsernameKey];
 
-	return [self initWithCoordinate:aCoordinate andTitle:aTitle andSubtitle:aSubtitle];
+	return [self initWithCoordinate:coordinate andTitle:title andSubtitle:subtitle];
 }
 
-- (BOOL)equalToPost:(PAWPost *)aPost {
-	if (aPost == nil) {
+- (BOOL)equalToPost:(PAWPost *)post {
+	if (post == nil) {
 		return NO;
 	}
 
-	if (aPost.object && self.object) {
+	if (post.object && self.object) {
 		// We have a PFObject inside the PAWPost, use that instead.
-		if ([aPost.object.objectId compare:self.object.objectId] != NSOrderedSame) {
+		if ([post.object.objectId compare:self.object.objectId] != NSOrderedSame) {
 			return NO;
 		}
 		return YES;
 	} else {
 		// Fallback code:
 
-		if ([aPost.title compare:self.title] != NSOrderedSame ||
-			[aPost.subtitle compare:self.subtitle] != NSOrderedSame ||
-			aPost.coordinate.latitude != self.coordinate.latitude ||
-			aPost.coordinate.longitude != self.coordinate.longitude ) {
+		if ([post.title compare:self.title] != NSOrderedSame ||
+			[post.subtitle compare:self.subtitle] != NSOrderedSame ||
+			post.coordinate.latitude != self.coordinate.latitude ||
+			post.coordinate.longitude != self.coordinate.longitude ) {
 			return NO;
 		}
 

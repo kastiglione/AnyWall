@@ -16,18 +16,7 @@ static NSString * const defaultsLocationKey = @"currentLocation";
 #import "PAWWelcomeViewController.h"
 #import "PAWWallViewController.h"
 
-@interface PAWAppDelegate ()
-
-
-@end
-
 @implementation PAWAppDelegate
-
-@synthesize window = _window;
-@synthesize viewController = _viewController;
-@synthesize filterDistance;
-@synthesize currentLocation;
-
 
 #pragma mark - UIApplicationDelegate
 
@@ -51,7 +40,7 @@ static NSString * const defaultsLocationKey = @"currentLocation";
 	// Desired search radius:
 	if ([userDefaults doubleForKey:defaultsFilterDistanceKey]) {
 		// use the ivar instead of self.accuracy to avoid an unnecessary write to NAND on launch.
-		filterDistance = [userDefaults doubleForKey:defaultsFilterDistanceKey];
+		self.filterDistance = [userDefaults doubleForKey:defaultsFilterDistanceKey];
 	} else {
 		// if we have no accuracy in defaults, set it to 1000 feet.
 		self.filterDistance = 1000 * kPAWFeetToMeters;
@@ -80,25 +69,25 @@ static NSString * const defaultsLocationKey = @"currentLocation";
 
 #pragma mark - PAWAppDelegate
 
-- (void)setFilterDistance:(CLLocationAccuracy)aFilterDistance {
-	filterDistance = aFilterDistance;
+- (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
+	_filterDistance = filterDistance;
 
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-	[userDefaults setDouble:filterDistance forKey:defaultsFilterDistanceKey];
+	[userDefaults setDouble:self.filterDistance forKey:defaultsFilterDistanceKey];
 	[userDefaults synchronize];
 
 	// Notify the app of the filterDistance change:
-	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:[NSNumber numberWithDouble:filterDistance] forKey:kPAWFilterDistanceKey];
+	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:[NSNumber numberWithDouble:self.filterDistance] forKey:kPAWFilterDistanceKey];
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[[NSNotificationCenter defaultCenter] postNotificationName:kPAWFilterDistanceChangeNotification object:nil userInfo:userInfo];
 	});
 }
 
-- (void)setCurrentLocation:(CLLocation *)aCurrentLocation {
-	currentLocation = aCurrentLocation;
+- (void)setCurrentLocation:(CLLocation *)currentLocation {
+	_currentLocation = currentLocation;
 
 	// Notify the app of the location change:
-	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:currentLocation forKey:kPAWLocationKey];
+	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:self.currentLocation forKey:kPAWLocationKey];
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[[NSNotificationCenter defaultCenter] postNotificationName:kPAWLocationChangeNotification object:nil userInfo:userInfo];
 	});

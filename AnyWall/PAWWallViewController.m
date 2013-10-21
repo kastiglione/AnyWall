@@ -20,69 +20,25 @@
 // private methods and properties
 @interface PAWWallViewController ()
 
-@property (nonatomic, strong) CLLocationManager *_locationManager;
+@property (nonatomic, strong) CLLocationManager *locationManager;
 @property (nonatomic, strong) PAWSearchRadius *searchRadius;
-@property (nonatomic, strong) PAWCircleView *circleView;
-@property (nonatomic, strong) NSMutableArray *annotations;
-@property (nonatomic, copy) NSString *className;
 @property (nonatomic, strong) PAWWallPostsTableViewController *wallPostsTableViewController;
 @property (nonatomic, assign) BOOL mapPinsPlaced;
-@property (nonatomic, assign) BOOL mapPannedSinceLocationUpdate;
+@property (nonatomic, assign) BOOL trackCurrentLocation;
 
 // posts:
 @property (nonatomic, strong) NSMutableArray *allPosts;
-
-- (void)startStandardUpdates;
-
-// CLLocationManagerDelegate methods:
-- (void)locationManager:(CLLocationManager *)manager
-    didUpdateToLocation:(CLLocation *)newLocation
-           fromLocation:(CLLocation *)oldLocation;
-
-- (void)locationManager:(CLLocationManager *)manager
-       didFailWithError:(NSError *)error;
-
-- (IBAction)settingsButtonSelected:(id)sender;
-- (IBAction)postButtonSelected:(id)sender;
-- (void)queryForAllPostsNearLocation:(CLLocation *)currentLocation withNearbyDistance:(CLLocationAccuracy)nearbyDistance;
-- (void)updatePostsForLocation:(CLLocation *)location withNearbyDistance:(CLLocationAccuracy) filterDistance;
-
-// NSNotification callbacks
-- (void)distanceFilterDidChange:(NSNotification *)note;
-- (void)locationDidChange:(NSNotification *)note;
-- (void)postWasCreated:(NSNotification *)note;
 
 @end
 
 @implementation PAWWallViewController
 
-@synthesize mapView;
-@synthesize _locationManager = locationManager;
-@synthesize searchRadius;
-@synthesize circleView;
-@synthesize annotations;
-@synthesize className;
-@synthesize wallPostsTableViewController;
-@synthesize allPosts;
-@synthesize mapPinsPlaced;
-@synthesize mapPannedSinceLocationUpdate;
-
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
 	self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-	if (self) {
-		self.title = @"Anywall";
-		self.className = kPAWParsePostsClassKey;
-		annotations = [[NSMutableArray alloc] initWithCapacity:10];
-		allPosts = [[NSMutableArray alloc] initWithCapacity:10];
+	if (self != nil) {
+		_allPosts = [[NSMutableArray alloc] initWithCapacity:10];
 	}
 	return self;
-}
-
-- (void)didReceiveMemoryWarning {
-    // Releases the view if it doesn't have a superview.
-    [super didReceiveMemoryWarning];
-    
-    // Release any cached data, images, etc that aren't in use.
 }
 
 #pragma mark - View lifecycle
@@ -90,6 +46,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view from its nib.
+
+	self.title = @"Anywall";
 
 	// Add the wall posts tableview as a subview with view containment (new in iOS 5.0):
 	self.wallPostsTableViewController = [[PAWWallPostsTableViewController alloc] initWithStyle:UITableViewStylePlain];
@@ -111,33 +69,28 @@
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(postWasCreated:) name:kPAWPostCreatedNotification object:nil];
 
 	self.mapView.region = MKCoordinateRegionMake(CLLocationCoordinate2DMake(37.332495f, -122.029095f), MKCoordinateSpanMake(0.008516f, 0.021801f));
-	self.mapPannedSinceLocationUpdate = NO;
+
+	self.trackCurrentLocation = YES;
+
 	[self startStandardUpdates];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
-	[locationManager startUpdatingLocation];
+	[self.locationManager startUpdatingLocation];
 	[super viewWillAppear:animated];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
-	[locationManager stopUpdatingLocation];
+	[self.locationManager stopUpdatingLocation];
 	[super viewDidDisappear:animated];
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
-}
-
 - (void)dealloc {
-	[locationManager stopUpdatingLocation];
+	[self.locationManager stopUpdatingLocation];
 	
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWFilterDistanceChangeNotification object:nil];
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWLocationChangeNotification object:nil];
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWPostCreatedNotification object:nil];
-	
-	self.mapPinsPlaced = NO; // reset this for the next time we show the map.
 }
 
 #pragma mark - NSNotificationCenter notification handlers
@@ -148,7 +101,7 @@
 
 	if (self.searchRadius == nil) {
 		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:appDelegate.currentLocation.coordinate radius:appDelegate.filterDistance];
-		[mapView addOverlay:self.searchRadius];
+		[self.mapView addOverlay:self.searchRadius];
 	} else {
 		self.searchRadius.radius = appDelegate.filterDistance;
 	}
@@ -157,20 +110,20 @@
 	[self updatePostsForLocation:appDelegate.currentLocation withNearbyDistance:filterDistance];
 	
 	// If they panned the map since our last location update, don't recenter it.
-	if (!self.mapPannedSinceLocationUpdate) {
+	if (self.trackCurrentLocation) {
 		// Set the map's region centered on their location at 2x filterDistance
 		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(appDelegate.currentLocation.coordinate, appDelegate.filterDistance * 2.0f, appDelegate.filterDistance * 2.0f);
 
-		[mapView setRegion:newRegion animated:YES];
-		self.mapPannedSinceLocationUpdate = NO;
+		[self.mapView setRegion:newRegion animated:YES];
+		self.trackCurrentLocation = YES;
 	} else {
 		// Just zoom to the new search radius (or maybe don't even do that?)
-		MKCoordinateRegion currentRegion = mapView.region;
+		MKCoordinateRegion currentRegion = self.mapView.region;
 		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(currentRegion.center, appDelegate.filterDistance * 2.0f, appDelegate.filterDistance * 2.0f);
 
-		BOOL oldMapPannedValue = self.mapPannedSinceLocationUpdate;
-		[mapView setRegion:newRegion animated:YES];
-		self.mapPannedSinceLocationUpdate = oldMapPannedValue;
+		BOOL oldMapPannedValue = self.trackCurrentLocation;
+		[self.mapView setRegion:newRegion animated:YES];
+		self.trackCurrentLocation = oldMapPannedValue;
 	}
 }
 
@@ -178,19 +131,19 @@
 	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
 
 	// If they panned the map since our last location update, don't recenter it.
-	if (!self.mapPannedSinceLocationUpdate) {
+	if (self.trackCurrentLocation) {
 		// Set the map's region centered on their new location at 2x filterDistance
 		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(appDelegate.currentLocation.coordinate, appDelegate.filterDistance * 2.0f, appDelegate.filterDistance * 2.0f);
 
-		BOOL oldMapPannedValue = self.mapPannedSinceLocationUpdate;
-		[mapView setRegion:newRegion animated:YES];
-		self.mapPannedSinceLocationUpdate = oldMapPannedValue;
+		BOOL oldMapPannedValue = self.trackCurrentLocation;
+		[self.mapView setRegion:newRegion animated:YES];
+		self.trackCurrentLocation = oldMapPannedValue;
 	} // else do nothing.
 
 	// If we haven't drawn the search radius on the map, initialize it.
 	if (self.searchRadius == nil) {
 		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:appDelegate.currentLocation.coordinate radius:appDelegate.filterDistance];
-		[mapView addOverlay:self.searchRadius];
+		[self.mapView addOverlay:self.searchRadius];
 	} else {
 		self.searchRadius.coordinate = appDelegate.currentLocation.coordinate;
 	}
@@ -222,19 +175,19 @@
 #pragma mark - CLLocationManagerDelegate methods and helpers
 
 - (void)startStandardUpdates {
-	if (nil == locationManager) {
-		locationManager = [[CLLocationManager alloc] init];
+	if (nil == self.locationManager) {
+		self.locationManager = [[CLLocationManager alloc] init];
 	}
 
-	locationManager.delegate = self;
-	locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+	self.locationManager.delegate = self;
+	self.locationManager.desiredAccuracy = kCLLocationAccuracyBest;
 
 	// Set a movement threshold for new events.
-	locationManager.distanceFilter = kCLLocationAccuracyNearestTenMeters;
+	self.locationManager.distanceFilter = kCLLocationAccuracyNearestTenMeters;
 
-	[locationManager startUpdatingLocation];
+	[self.locationManager startUpdatingLocation];
 
-	CLLocation *currentLocation = locationManager.location;
+	CLLocation *currentLocation = self.locationManager.location;
 	if (currentLocation) {
 		PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
 		appDelegate.currentLocation = currentLocation;
@@ -248,7 +201,7 @@
 			NSLog(@"kCLAuthorizationStatusAuthorized");
 			// Re-enable the post button if it was disabled before.
 			self.navigationItem.rightBarButtonItem.enabled = YES;
-			[locationManager startUpdatingLocation];
+			[self.locationManager startUpdatingLocation];
 			break;
 		case kCLAuthorizationStatusDenied:
 			NSLog(@"kCLAuthorizationStatusDenied");
@@ -283,7 +236,7 @@
 	NSLog(@"Error: %@", [error description]);
 
 	if (error.code == kCLErrorDenied) {
-		[locationManager stopUpdatingLocation];
+		[self.locationManager stopUpdatingLocation];
 	} else if (error.code == kCLErrorLocationUnknown) {
 		// todo: retry?
 		// set a timer for five seconds to cycle location, and if it fails again, bail and tell the user.
@@ -300,64 +253,55 @@
 #pragma mark - MKMapViewDelegate methods
 
 - (MKOverlayView *)mapView:(MKMapView *)mapView viewForOverlay:(id <MKOverlay>)overlay {
-	MKOverlayView *result = nil;
-	float version = [[[UIDevice currentDevice] systemVersion] floatValue];
-	
 	// Only display the search radius in iOS 5.1+
+	float version = [[[UIDevice currentDevice] systemVersion] floatValue];
 	if (version >= 5.1f && [overlay isKindOfClass:[PAWSearchRadius class]]) {
-		result = [[PAWCircleView alloc] initWithSearchRadius:(PAWSearchRadius *)overlay];
-		[(MKOverlayPathView *)result setFillColor:[[UIColor darkGrayColor] colorWithAlphaComponent:0.2f]];
-		[(MKOverlayPathView *)result setStrokeColor:[[UIColor darkGrayColor] colorWithAlphaComponent:0.7f]];
-		[(MKOverlayPathView *)result setLineWidth:2.0];
-	}
-	return result;
-}
-
-- (MKAnnotationView *)mapView:(MKMapView *)aMapView viewForAnnotation:(id<MKAnnotation>)annotation {
-	// Let the system handle user location annotations.
-	if ([annotation isKindOfClass:[MKUserLocation class]]) {
-		return nil;
-	}
-
-	static NSString *pinIdentifier = @"CustomPinAnnotation";
-
-	// Handle any custom annotations.
-	if ([annotation isKindOfClass:[PAWPost class]])
-	{
-		// Try to dequeue an existing pin view first.
-		MKPinAnnotationView *pinView = (MKPinAnnotationView*)[aMapView dequeueReusableAnnotationViewWithIdentifier:pinIdentifier];
-
-		if (!pinView)
-		{
-			// If an existing pin view was not available, create one.
-			pinView = [[MKPinAnnotationView alloc] initWithAnnotation:annotation
-			                                          reuseIdentifier:pinIdentifier];
-		}
-		else {
-			pinView.annotation = annotation;
-		}
-		pinView.pinColor = [(PAWPost *)annotation pinColor];
-		pinView.animatesDrop = [((PAWPost *)annotation) animatesDrop];
-		pinView.canShowCallout = YES;
-
-		return pinView;
+		MKOverlayPathView *pathView = [[PAWCircleView alloc] initWithSearchRadius:(PAWSearchRadius *)overlay];
+		pathView.fillColor = [[UIColor darkGrayColor] colorWithAlphaComponent:0.2];
+		pathView.strokeColor = [[UIColor darkGrayColor] colorWithAlphaComponent:0.7];
+		pathView.lineWidth = 2;
+		return pathView;
 	}
 
 	return nil;
+}
+
+- (MKAnnotationView *)mapView:(MKMapView *)mapView viewForAnnotation:(id<MKAnnotation>)annotation {
+	// Let the system handle user location annotations.
+	if ([annotation isKindOfClass:[MKUserLocation class]]) return nil;
+
+	if (![annotation isKindOfClass:[PAWPost class]]) return nil;
+
+	PAWPost *post = (PAWPost *)annotation;
+
+	// Try to dequeue an existing pin view first.
+	static NSString *pinIdentifier = @"CustomPinAnnotation";
+	MKPinAnnotationView *pinView = (MKPinAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:pinIdentifier];
+	if (pinView == nil) {
+		pinView = [[MKPinAnnotationView alloc] initWithAnnotation:post reuseIdentifier:pinIdentifier];
+	} else {
+		pinView.annotation = post;
+	}
+
+	pinView.pinColor = post.pinColor;
+	pinView.animatesDrop = post.animatesDrop;
+	pinView.canShowCallout = YES;
+
+	return pinView;
 }
 
 - (void)mapView:(MKMapView *)mapView didSelectAnnotationView:(MKAnnotationView *)view {
 	id<MKAnnotation> annotation = [view annotation];
 	if ([annotation isKindOfClass:[PAWPost class]]) {
 		PAWPost *post = [view annotation];
-		[wallPostsTableViewController highlightCellForPost:post];
+		[self.wallPostsTableViewController highlightCellForPost:post];
 	} else if ([annotation isKindOfClass:[MKUserLocation class]]) {
 		// Center the map on the user's current location:
 		PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
 		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(appDelegate.currentLocation.coordinate, appDelegate.filterDistance * 2, appDelegate.filterDistance * 2);
 
 		[self.mapView setRegion:newRegion animated:YES];
-		self.mapPannedSinceLocationUpdate = NO;
+		self.trackCurrentLocation = YES;
 	}
 }
 
@@ -365,18 +309,18 @@
 	id<MKAnnotation> annotation = [view annotation];
 	if ([annotation isKindOfClass:[PAWPost class]]) {
 		PAWPost *post = [view annotation];
-		[wallPostsTableViewController unhighlightCellForPost:post];
+		[self.wallPostsTableViewController unhighlightCellForPost:post];
 	}
 }
 
 - (void)mapView:(MKMapView *)mapView regionWillChangeAnimated:(BOOL)animated {
-	self.mapPannedSinceLocationUpdate = YES;
+	self.trackCurrentLocation = NO;
 }
 
 #pragma mark - Fetch map pins
 
 - (void)queryForAllPostsNearLocation:(CLLocation *)currentLocation withNearbyDistance:(CLLocationAccuracy)nearbyDistance {
-	PFQuery *query = [PFQuery queryWithClassName:self.className];
+	PFQuery *query = [PFQuery queryWithClassName:kPAWParsePostsClassKey];
 
 	if (currentLocation == nil) {
 		NSLog(@"%s got a nil location!", __PRETTY_FUNCTION__);
@@ -411,7 +355,7 @@
 				PAWPost *newPost = [[PAWPost alloc] initWithPFObject:object];
 				[allNewPosts addObject:newPost];
 				BOOL found = NO;
-				for (PAWPost *currentPost in allPosts) {
+				for (PAWPost *currentPost in self.allPosts) {
 					if ([newPost equalToPost:currentPost]) {
 						found = YES;
 					}
@@ -424,7 +368,7 @@
 
 			// 2. Find posts in allPosts that didn't make the cut.
 			NSMutableArray *postsToRemove = [[NSMutableArray alloc] initWithCapacity:kPAWWallPostsSearch];
-			for (PAWPost *currentPost in allPosts) {
+			for (PAWPost *currentPost in self.allPosts) {
 				BOOL found = NO;
 				// Use our object cache from the first loop to save some work.
 				for (PAWPost *allNewPost in allNewPosts) {
@@ -445,16 +389,16 @@
 				CLLocationDistance distanceFromCurrent = [currentLocation distanceFromLocation:objectLocation];
 				[newPost setTitleAndSubtitleOutsideDistance:( distanceFromCurrent > nearbyDistance ? YES : NO )];
 				// Animate all pins after the initial load:
-				newPost.animatesDrop = mapPinsPlaced;
+				newPost.animatesDrop = self.mapPinsPlaced;
 			}
 
 			// At this point, newAllPosts contains a new list of post objects.
 			// We should add everything in newPosts to the map, remove everything in postsToRemove,
 			// and add newPosts to allPosts.
-			[mapView removeAnnotations:postsToRemove];
-			[mapView addAnnotations:newPosts];
-			[allPosts addObjectsFromArray:newPosts];
-			[allPosts removeObjectsInArray:postsToRemove];
+			[self.mapView removeAnnotations:postsToRemove];
+			[self.mapView addAnnotations:newPosts];
+			[self.allPosts addObjectsFromArray:newPosts];
+			[self.allPosts removeObjectsInArray:postsToRemove];
 
 			self.mapPinsPlaced = YES;
 		}
@@ -463,18 +407,18 @@
 
 // When we update the search filter distance, we need to update our pins' titles to match.
 - (void)updatePostsForLocation:(CLLocation *)currentLocation withNearbyDistance:(CLLocationAccuracy) nearbyDistance {
-	for (PAWPost *post in allPosts) {
+	for (PAWPost *post in self.allPosts) {
 		CLLocation *objectLocation = [[CLLocation alloc] initWithLatitude:post.coordinate.latitude longitude:post.coordinate.longitude];
 		// if this post is outside the filter distance, don't show the regular callout.
 		CLLocationDistance distanceFromCurrent = [currentLocation distanceFromLocation:objectLocation];
 		if (distanceFromCurrent > nearbyDistance) { // Outside search radius
 			[post setTitleAndSubtitleOutsideDistance:YES];
-			[mapView viewForAnnotation:post];
-			[(MKPinAnnotationView *) [mapView viewForAnnotation:post] setPinColor:post.pinColor];
+			[self.mapView viewForAnnotation:post];
+			[(MKPinAnnotationView *) [self.mapView viewForAnnotation:post] setPinColor:post.pinColor];
 		} else {
 			[post setTitleAndSubtitleOutsideDistance:NO]; // Inside search radius
-			[mapView viewForAnnotation:post];
-			[(MKPinAnnotationView *) [mapView viewForAnnotation:post] setPinColor:post.pinColor];
+			[self.mapView viewForAnnotation:post];
+			[(MKPinAnnotationView *) [self.mapView viewForAnnotation:post] setPinColor:post.pinColor];
 		}
 	}
 }

@@ -34,8 +34,6 @@ static NSString * const kPAWPostCreatedNotification = @"kPAWPostCreatedNotificat
 // UI strings:
 static NSString * const kPAWWallCantViewPost = @"Can’t view post! Get closer.";
 
-#define PAWLocationAccuracy double
-
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 

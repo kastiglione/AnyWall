@@ -65,9 +65,10 @@
 	return nil;
 }
 
-- (id)initWithSearchRadius:(PAWSearchRadius *)aSearchRadius;
+- (id)initWithSearchRadius:(PAWSearchRadius *)searchRadius;
 {
-	if ((self = [super initWithOverlay:aSearchRadius])) {
+	self = [super initWithOverlay:searchRadius];
+	if (self != nil) {
 		[self.searchRadius addObserver:self forKeyPath:@"coordinate" options:0 context:nil];
 		[self.searchRadius addObserver:self forKeyPath:@"radius" options:0 context:nil];
 	}

@@ -11,34 +11,7 @@
 #import "PAWAppDelegate.h"
 #import <Parse/Parse.h>
 
-@interface PAWWallPostCreateViewController ()
-
-- (void)updateCharacterCount:(UITextView *)aTextView;
-- (BOOL)checkCharacterCount:(UITextView *)aTextView;
-- (void)textInputChanged:(NSNotification *)note;
-
-@end
-
 @implementation PAWWallPostCreateViewController
-
-@synthesize textView;
-@synthesize characterCount;
-@synthesize postButton;
-
-- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-    if (self) {
-        // Custom initialization
-    }
-    return self;
-}
-
-- (void)didReceiveMemoryWarning {
-    // Releases the view if it doesn't have a superview.
-    [super didReceiveMemoryWarning];
-    
-    // Release any cached data, images, etc that aren't in use.
-}
 
 #pragma mark - View lifecycle
 
@@ -56,21 +29,16 @@
 
 	[self.textView setInputAccessoryView:self.characterCount];
 
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextViewTextDidChangeNotification object:textView];
-	[self updateCharacterCount:textView];
-	[self checkCharacterCount:textView];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextViewTextDidChangeNotification object:self.textView];
+	[self updateCharacterCount:self.textView];
+	[self checkCharacterCount:self.textView];
 
 	// Show the keyboard/accept input.
-	[textView becomeFirstResponder];
-}
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+	[self.textView becomeFirstResponder];
 }
 
 - (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextViewTextDidChangeNotification object:textView];
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextViewTextDidChangeNotification object:self.textView];
 }
 
 #pragma mark UINavigationBar-based actions
@@ -81,14 +49,14 @@
 
 - (IBAction)postPost:(id)sender {
 	// Resign first responder to dismiss the keyboard and capture in-flight autocorrect suggestions
-	[textView resignFirstResponder];
+	[self.textView resignFirstResponder];
 
 	// Capture current text field contents:
-	[self updateCharacterCount:textView];
-	BOOL isAcceptableAfterAutocorrect = [self checkCharacterCount:textView];
+	[self updateCharacterCount:self.textView];
+	BOOL isAcceptableAfterAutocorrect = [self checkCharacterCount:self.textView];
 
 	if (!isAcceptableAfterAutocorrect) {
-		[textView becomeFirstResponder];
+		[self.textView becomeFirstResponder];
 		return;
 	}
 
@@ -100,7 +68,7 @@
 
 	// Stitch together a postObject and send this async to Parse
 	PFObject *postObject = [PFObject objectWithClassName:kPAWParsePostsClassKey];
-	[postObject setObject:textView.text forKey:kPAWParseTextKey];
+	[postObject setObject:self.textView.text forKey:kPAWParseTextKey];
 	[postObject setObject:user forKey:kPAWParseUserKey];
 	[postObject setObject:currentPoint forKey:kPAWParseLocationKey];
 	// Use PFACL to restrict future modifications to this object.
@@ -141,8 +109,8 @@
 
 #pragma mark Private helper methods
 
-- (void)updateCharacterCount:(UITextView *)aTextView {
-	NSUInteger count = aTextView.text.length;
+- (void)updateCharacterCount:(UITextView *)textView {
+	NSUInteger count = textView.text.length;
 	self.characterCount.text = [NSString stringWithFormat:@"%i/140", count];
 	if (count > kPAWWallPostMaximumCharacterCount || count == 0) {
 		self.characterCount.font = [UIFont boldSystemFontOfSize:self.characterCount.font.pointSize];
@@ -151,13 +119,13 @@
 	}
 }
 
-- (BOOL)checkCharacterCount:(UITextView *)aTextView {
-	NSUInteger count = aTextView.text.length;
+- (BOOL)checkCharacterCount:(UITextView *)textView {
+	NSUInteger count = textView.text.length;
 	if (count > kPAWWallPostMaximumCharacterCount || count == 0) {
-		postButton.enabled = NO;
+		self.postButton.enabled = NO;
 		return NO;
 	} else {
-		postButton.enabled = YES;
+		self.postButton.enabled = YES;
 		return YES;
 	}
 }

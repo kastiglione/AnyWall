@@ -14,11 +14,6 @@
 
 @implementation PAWWelcomeViewController
 
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Release any cached data, images, etc that aren't in use.
-}
-
 #pragma mark - Transition methods
 
 - (IBAction)loginButtonSelected:(id)sender {
@@ -35,13 +30,6 @@
 	UIApplication *ourApplication = [UIApplication sharedApplication];
     NSURL *url = [NSURL URLWithString:@"https://www.parse.com/"];
     [ourApplication openURL:url];
-}
-
-#pragma mark - View lifecycle
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
 }
 
 @end

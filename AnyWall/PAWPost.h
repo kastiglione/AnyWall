@@ -34,7 +34,7 @@
 // Designated initializer.
 - (id)initWithCoordinate:(CLLocationCoordinate2D)coordinate andTitle:(NSString *)title andSubtitle:(NSString *)subtitle;
 - (id)initWithPFObject:(PFObject *)object;
-- (BOOL)equalToPost:(PAWPost *)aPost;
+- (BOOL)equalToPost:(PAWPost *)post;
 
 - (void)setTitleAndSubtitleOutsideDistance:(BOOL)outside;
 

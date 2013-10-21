@@ -33,15 +33,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 
 #import "PAWAppDelegate.h"
 
-@interface PAWWallPostsTableViewController ()
-
-// NSNotification callbacks
-- (void)distanceFilterDidChange:(NSNotification *)note;
-- (void)locationDidChange:(NSNotification *)note;
-- (void)postWasCreated:(NSNotification *)note;
-
-@end
-
 @implementation PAWWallPostsTableViewController
 
 - (void)dealloc {
@@ -52,7 +43,7 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 
 - (id)initWithStyle:(UITableViewStyle)style {
 	self = [super initWithStyle:style];
-	if (self) {
+	if (self != nil) {
 		// Customize the table:
 
 		// The className to query on
@@ -100,12 +91,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 	self.tableView.separatorColor = [UIColor clearColor];
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-	// Return YES for supported orientations
-	return (interfaceOrientation == UIInterfaceOrientationPortrait);
-}
-
-
 #pragma mark - PFQueryTableViewController
 
 - (void)objectsDidLoad:(NSError *)error {
@@ -115,12 +100,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
     if (NSClassFromString(@"UIRefreshControl")) {
         [self.refreshControl endRefreshing];
     }
-}
-
-- (void)objectsWillLoad {
-    [super objectsWillLoad];
-    
-    // This method is called before a PFQuery is fired to get more objects
 }
 
 // Override to customize what kind of query to perform on the class. The default is to query for

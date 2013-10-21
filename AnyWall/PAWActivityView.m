@@ -14,7 +14,7 @@ static CGFloat const kPAWActivityViewActivityIndicatorPadding = 10.f;
 
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (self) {
+    if (self != nil) {
 		self.label = [[UILabel alloc] initWithFrame:CGRectZero];
 		self.label.textColor = [UIColor whiteColor];
 		self.label.backgroundColor = [UIColor clearColor];

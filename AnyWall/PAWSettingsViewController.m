@@ -13,9 +13,6 @@
 
 @interface PAWSettingsViewController ()
 
-- (NSString *)distanceLabelForCell:(NSIndexPath *)indexPath;
-- (PAWLocationAccuracy)distanceForCell:(NSIndexPath *)indexPath;
-
 @property (nonatomic, assign) CLLocationAccuracy filterDistance;
 
 @end
@@ -44,12 +41,9 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 
 @implementation PAWSettingsViewController
 
-@synthesize tableView;
-@synthesize filterDistance;
-
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-    if (self) {
+    if (self != nil) {
         // Custom initialization
 		PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
 		self.filterDistance = appDelegate.filterDistance;
@@ -61,17 +55,10 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 #pragma mark - Custom setters
 
 // Always fault our filter distance through to the app delegate. We just cache it locally because it's used in the tableview's cells.
-- (void)setFilterDistance:(CLLocationAccuracy)aFilterDistance {
+- (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
 	PAWAppDelegate *appDelegate = [[UIApplication sharedApplication] delegate];
-	appDelegate.filterDistance = aFilterDistance;
-	filterDistance = aFilterDistance;
-}
-
-#pragma mark - View lifecycle
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+	appDelegate.filterDistance = filterDistance;
+	_filterDistance = filterDistance;
 }
 
 #pragma mark - Private helper methods
@@ -96,8 +83,8 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 	return cellText;
 }
 
-- (PAWLocationAccuracy)distanceForCell:(NSIndexPath *)indexPath {
-	PAWLocationAccuracy distance = 0.0;
+- (CLLocationAccuracy)distanceForCell:(NSIndexPath *)indexPath {
+	CLLocationAccuracy distance = 0.0;
 	switch (indexPath.row) {
 		case kPAWSettingsTableViewDistanceSection250FeetRow:
 			distance = 250;
@@ -143,10 +130,10 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 	};
 }
 
-- (UITableViewCell *)tableView:(UITableView *)aTableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
 	static NSString *identifier = @"SettingsTableView";
 	if (indexPath.section == kPAWSettingsTableViewDistance) {
-		UITableViewCell *cell = [aTableView dequeueReusableCellWithIdentifier:identifier];
+		UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
 		if ( cell == nil )
 		{
 			cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
@@ -159,8 +146,8 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 			NSLog(@"We have a zero filter distance!");
 		}
 
-		PAWLocationAccuracy filterDistanceInFeet = self.filterDistance * ( 1 / kPAWFeetToMeters);
-		PAWLocationAccuracy distanceForCell = [self distanceForCell:indexPath];
+		CLLocationAccuracy filterDistanceInFeet = self.filterDistance * ( 1 / kPAWFeetToMeters);
+		CLLocationAccuracy distanceForCell = [self distanceForCell:indexPath];
 		if (abs(distanceForCell - filterDistanceInFeet) < 0.001 ) {
 			cell.accessoryType = UITableViewCellAccessoryCheckmark;
 		} else {
@@ -169,7 +156,7 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 
 		return cell;
 	} else if (indexPath.section == kPAWSettingsTableViewLogout) {
-		UITableViewCell *cell = [aTableView dequeueReusableCellWithIdentifier:identifier];
+		UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
 		if ( cell == nil )
 		{
 			cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
@@ -203,28 +190,28 @@ static uint16_t const kPAWSettingsTableViewLogoutNumberOfRows = 1;
 #pragma mark - UITableViewDelegate methods
 
 // Called after the user changes the selection.
-- (void)tableView:(UITableView *)aTableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
 	if (indexPath.section == kPAWSettingsTableViewDistance) {
-		[aTableView deselectRowAtIndexPath:indexPath animated:YES];
+		[tableView deselectRowAtIndexPath:indexPath animated:YES];
 
 		// if we were already selected, bail and save some work.
-		UITableViewCell *selectedCell = [aTableView cellForRowAtIndexPath:indexPath];
+		UITableViewCell *selectedCell = [tableView cellForRowAtIndexPath:indexPath];
 		if (selectedCell.accessoryType == UITableViewCellAccessoryCheckmark) {
 			return;
 		}
 
 		// uncheck all visible cells.
-		for (UITableViewCell *cell in [aTableView visibleCells]) {
+		for (UITableViewCell *cell in [tableView visibleCells]) {
 			if (cell.accessoryType != UITableViewCellAccessoryNone) {
 				cell.accessoryType = UITableViewCellAccessoryNone;
 			}
 		}
 		selectedCell.accessoryType = UITableViewCellAccessoryCheckmark;
 
-		PAWLocationAccuracy distanceForCellInFeet = [self distanceForCell:indexPath];
+		CLLocationAccuracy distanceForCellInFeet = [self distanceForCell:indexPath];
 		self.filterDistance = distanceForCellInFeet * kPAWFeetToMeters;
 	} else if (indexPath.section == kPAWSettingsTableViewLogout) {
-		[aTableView deselectRowAtIndexPath:indexPath animated:YES];
+		[tableView deselectRowAtIndexPath:indexPath animated:YES];
 		UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Log out of Anywall?" message:nil delegate:self cancelButtonTitle:@"Log out" otherButtonTitles:@"Cancel", nil];
 		[alertView show];
 	}

@@ -10,11 +10,11 @@
 
 @implementation PAWSearchRadius
 
-- (id)initWithCoordinate:(CLLocationCoordinate2D)aCoordinate radius:(CLLocationDistance)aRadius {
+- (id)initWithCoordinate:(CLLocationCoordinate2D)coordinate radius:(CLLocationDistance)radius {
 	self = [super init];
-	if (self) {
-		self.coordinate = aCoordinate;
-		self.radius = aRadius;
+	if (self != nil) {
+		_coordinate = coordinate;
+		_radius = radius;
 	}
 	return self;
 }

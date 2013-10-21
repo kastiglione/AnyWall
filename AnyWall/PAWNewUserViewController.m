@@ -12,61 +12,43 @@
 #import "PAWActivityView.h"
 #import "PAWWallViewController.h"
 
-@interface PAWNewUserViewController ()
-
-- (void)processFieldEntries;
-- (void)textInputChanged:(NSNotification *)note;
-- (BOOL)shouldEnableDoneButton;
-
-@end
-
 @implementation PAWNewUserViewController
-
-@synthesize doneButton;
-@synthesize usernameField;
-@synthesize passwordField, passwordAgainField;
-
 
 #pragma mark - UIViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view from its nib.
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextFieldTextDidChangeNotification object:usernameField];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextFieldTextDidChangeNotification object:passwordField];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextFieldTextDidChangeNotification object:passwordAgainField];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextFieldTextDidChangeNotification object:self.usernameField];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextFieldTextDidChangeNotification object:self.passwordField];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textInputChanged:) name:UITextFieldTextDidChangeNotification object:self.passwordAgainField];
 
-	doneButton.enabled = NO;
+	self.doneButton.enabled = NO;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
-	[usernameField becomeFirstResponder];
+	[self.usernameField becomeFirstResponder];
 	[super viewWillAppear:animated];
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-    // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
-}
-
 - (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:usernameField];
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:passwordField];
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:passwordAgainField];
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:self.usernameField];
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:self.passwordField];
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:self.passwordAgainField];
 }
 
 
 #pragma mark - UITextFieldDelegate
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
-	if (textField == usernameField) {
-		[passwordField becomeFirstResponder];
+	if (textField == self.usernameField) {
+		[self.passwordField becomeFirstResponder];
 	}
-	if (textField == passwordField) {
-		[passwordAgainField becomeFirstResponder];
+	if (textField == self.passwordField) {
+		[self.passwordAgainField becomeFirstResponder];
 	}
-	if (textField == passwordAgainField) {
-		[passwordAgainField resignFirstResponder];
+	if (textField == self.passwordAgainField) {
+		[self.passwordAgainField resignFirstResponder];
 		[self processFieldEntries];
 	}
 
@@ -77,19 +59,19 @@
 
 - (BOOL)shouldEnableDoneButton {
 	BOOL enableDoneButton = NO;
-	if (usernameField.text != nil &&
-		usernameField.text.length > 0 &&
-		passwordField.text != nil &&
-		passwordField.text.length > 0 &&
-		passwordAgainField.text != nil &&
-		passwordAgainField.text.length > 0) {
+	if (self.usernameField.text != nil &&
+		self.usernameField.text.length > 0 &&
+		self.passwordField.text != nil &&
+		self.passwordField.text.length > 0 &&
+		self.passwordAgainField.text != nil &&
+		self.passwordAgainField.text.length > 0) {
 		enableDoneButton = YES;
 	}
 	return enableDoneButton;
 }
 
 - (void)textInputChanged:(NSNotification *)note {
-	doneButton.enabled = [self shouldEnableDoneButton];
+	self.doneButton.enabled = [self shouldEnableDoneButton];
 }
 
 - (IBAction)cancel:(id)sender {
@@ -97,9 +79,9 @@
 }
 
 - (IBAction)done:(id)sender {
-	[usernameField resignFirstResponder];
-	[passwordField resignFirstResponder];
-	[passwordAgainField resignFirstResponder];
+	[self.usernameField resignFirstResponder];
+	[self.passwordField resignFirstResponder];
+	[self.passwordAgainField resignFirstResponder];
 	[self processFieldEntries];
 }
 
@@ -108,9 +90,9 @@
 	// Compare password and passwordAgain for equality
 	// Throw up a dialog that tells them what they did wrong if they did it wrong.
 
-	NSString *username = usernameField.text;
-	NSString *password = passwordField.text;
-	NSString *passwordAgain = passwordAgainField.text;
+	NSString *username = self.usernameField.text;
+	NSString *password = self.passwordField.text;
+	NSString *passwordAgain = self.passwordAgainField.text;
 	NSString *errorText = @"Please ";
 	NSString *usernameBlankText = @"enter a username";
 	NSString *passwordBlankText = @"enter a password";
@@ -125,13 +107,13 @@
 
 		// Set up the keyboard for the first field missing input:
 		if (passwordAgain.length == 0) {
-			[passwordAgainField becomeFirstResponder];
+			[self.passwordAgainField becomeFirstResponder];
 		}
 		if (password.length == 0) {
-			[passwordField becomeFirstResponder];
+			[self.passwordField becomeFirstResponder];
 		}
 		if (username.length == 0) {
-			[usernameField becomeFirstResponder];
+			[self.usernameField becomeFirstResponder];
 		}
 
 		if (username.length == 0) {
@@ -149,7 +131,7 @@
 		// Check for equal password strings.
 		textError = YES;
 		errorText = [errorText stringByAppendingString:passwordMismatchText];
-		[passwordField becomeFirstResponder];
+		[self.passwordField becomeFirstResponder];
 	}
 
 	if (textError) {
@@ -160,7 +142,7 @@
 
 	// Everything looks good; try to log in.
 	// Disable the done button for now.
-	doneButton.enabled = NO;
+	self.doneButton.enabled = NO;
 	PAWActivityView *activityView = [[PAWActivityView alloc] initWithFrame:CGRectMake(0.f, 0.f, self.view.frame.size.width, self.view.frame.size.height)];
 	activityView.status = @"Signing You Up";
 	[self.view addSubview:activityView];
@@ -176,11 +158,11 @@
 		if (error) {
 			UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:[[error userInfo] objectForKey:@"error"] message:nil delegate:self cancelButtonTitle:nil otherButtonTitles:@"Ok", nil];
 			[alertView show];
-			doneButton.enabled = [self shouldEnableDoneButton];
+			self.doneButton.enabled = [self shouldEnableDoneButton];
 			[activityView.activityIndicator stopAnimating];
 			[activityView removeFromSuperview];
 			// Bring the keyboard back up, because they'll probably need to change something.
-			[usernameField becomeFirstResponder];
+			[self.usernameField becomeFirstResponder];
 			return;
 		}
 
