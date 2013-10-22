@@ -84,6 +84,29 @@
 		return [NSValue valueWithBytes:&region objCType:@encode(MKCoordinateRegion)];
 	}];
 
+	// Function to create a signal for a given annotation action (selection or
+	// deselection), and for a given annotation class.
+	RACSignal *(^annotationForTap)(SEL, Class) = ^(SEL selector, Class annotationClass) {
+		return [[[self
+			rac_signalForSelector:selector fromProtocol:@protocol(MKMapViewDelegate)]
+			reduceEach:^(MKMapView *mapView, MKAnnotationView *annotationView) {
+				return annotationView.annotation;
+			}]
+			filter:^(id annotation) {
+				return [annotation isKindOfClass:annotationClass];
+			}];
+	};
+
+	// Annotation selection triggers cell highlighting.
+	[self.wallPostsTableViewController
+		rac_liftSelector:@selector(highlightCellForPost:)
+		withSignals:annotationForTap(@selector(mapView:didSelectAnnotationView:), PAWPost.class), nil];
+
+	// Annotation deselection triggers cell unhighlighting.
+	[self.wallPostsTableViewController
+		rac_liftSelector:@selector(unhighlightCellForPost:)
+		withSignals:annotationForTap(@selector(mapView:didDeselectAnnotationView:), PAWPost.class), nil];
+
 	// Helper function to update the map center or region, but only when the
 	// current location is being tracked.
 	void (^updateMapWhenTracking)(SEL, RACSignal *) = ^(SEL selector, RACSignal *property) {
@@ -107,6 +130,21 @@
 
 	// Update map region when search radius has changed, but only when tracking.
 	updateMapWhenTracking(@selector(setRegion:animated:), currentRegion);
+
+	// Assume map region changes are triggered by the user (pan, zoom). Changes
+	// by the user turn off trackCurrentLocation. The user can turn on tracking
+	// by tapping the current location annotaion view (blue dot).
+	RAC(self, trackCurrentLocation) = [[self
+		rac_signalForSelector:@selector(mapView:regionWillChangeAnimated:) fromProtocol:@protocol(MKMapViewDelegate)]
+		mapReplace:@NO];
+
+	// When the user taps the user location annotation (blue dot), center the
+	// map, and turn on location tracking.
+	[annotationForTap(@selector(mapView:didSelectAnnotationView:), MKUserLocation.class) subscribeNext:^(id _) {
+		@strongify(self);
+		[self.mapView setCenterCoordinate:self.currentLocation.coordinate animated:YES];
+		self.trackCurrentLocation = YES;
+	}];
 
 	// Define search radius overlay.
 	self.searchRadius = [[PAWSearchRadius alloc] init];
@@ -133,6 +171,10 @@
 		subscribeNext:^(id _) {
 			[NSUserDefaults.standardUserDefaults synchronize];
 		}];
+
+	// Bust any caching of which methods the delegate implements.
+	self.mapView.delegate = nil;
+	self.mapView.delegate = self;
 
 	[self startStandardUpdates];
 }
@@ -299,32 +341,6 @@
 	pinView.canShowCallout = YES;
 
 	return pinView;
-}
-
-- (void)mapView:(MKMapView *)mapView didSelectAnnotationView:(MKAnnotationView *)view {
-	id<MKAnnotation> annotation = [view annotation];
-	if ([annotation isKindOfClass:[PAWPost class]]) {
-		PAWPost *post = [view annotation];
-		[self.wallPostsTableViewController highlightCellForPost:post];
-	} else if ([annotation isKindOfClass:[MKUserLocation class]]) {
-		// Center the map on the user's current location:
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(self.currentLocation.coordinate, self.filterDistance * 2, self.filterDistance * 2);
-
-		[self.mapView setRegion:newRegion animated:YES];
-		self.trackCurrentLocation = YES;
-	}
-}
-
-- (void)mapView:(MKMapView *)mapView didDeselectAnnotationView:(MKAnnotationView *)view {
-	id<MKAnnotation> annotation = [view annotation];
-	if ([annotation isKindOfClass:[PAWPost class]]) {
-		PAWPost *post = [view annotation];
-		[self.wallPostsTableViewController unhighlightCellForPost:post];
-	}
-}
-
-- (void)mapView:(MKMapView *)mapView regionWillChangeAnimated:(BOOL)animated {
-	self.trackCurrentLocation = NO;
 }
 
 #pragma mark - Fetch map pins
