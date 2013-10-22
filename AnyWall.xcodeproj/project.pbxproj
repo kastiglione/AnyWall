@@ -11,6 +11,7 @@
 		2F3BD81414F2117100BDC051 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = 2F3BD81314F2117100BDC051 /* Default.png */; };
 		556BB1B51783912400F9ED05 /* libParse-RACExtensions.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 556BB1B01783910000F9ED05 /* libParse-RACExtensions.a */; };
 		556BB1B71783912400F9ED05 /* libReactiveCocoa-iOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 556BB1B61783912400F9ED05 /* libReactiveCocoa-iOS.a */; };
+		55BDC7D91816FC2D008453D5 /* CLLocationManager+RACSignalSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = 55BDC7D81816FC2D008453D5 /* CLLocationManager+RACSignalSupport.m */; };
 		6D97114C16F7C36600B50B57 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6D97114B16F7C36600B50B57 /* Default-568h@2x.png */; };
 		6D97114E16F7C60A00B50B57 /* Parse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D97114D16F7C60A00B50B57 /* Parse.framework */; };
 		74D131E61582A7420065F1D2 /* Anywall-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 74D131E51582A7420065F1D2 /* Anywall-Info.plist */; };
@@ -98,7 +99,9 @@
 		2F3BD81114F20F9E00BDC051 /* Default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "Default@2x.png"; path = "../Default@2x.png"; sourceTree = "<group>"; };
 		2F3BD81314F2117100BDC051 /* Default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Default.png; path = ../Default.png; sourceTree = "<group>"; };
 		556BB1A7178390FF00F9ED05 /* Parse-RACExtensions.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "Parse-RACExtensions.xcodeproj"; path = "external/Parse-RACExtensions/Parse-RACExtensions.xcodeproj"; sourceTree = "<group>"; };
-		556BB1B61783912400F9ED05 /* libReactiveCocoa-iOS.a */ = {isa = PBXFileReference; lastKnownFileType = file; name = "libReactiveCocoa-iOS.a"; path = "external/Parse-RACExtensions/external/ReactiveCocoa/ReactiveCocoaFramework/build/Release-iphoneos/libReactiveCocoa-iOS.a"; sourceTree = "<group>"; };
+		556BB1B61783912400F9ED05 /* libReactiveCocoa-iOS.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libReactiveCocoa-iOS.a"; path = "external/Parse-RACExtensions/external/ReactiveCocoa/ReactiveCocoaFramework/build/Release-iphoneos/libReactiveCocoa-iOS.a"; sourceTree = "<group>"; };
+		55BDC7D71816FC2D008453D5 /* CLLocationManager+RACSignalSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "CLLocationManager+RACSignalSupport.h"; sourceTree = "<group>"; };
+		55BDC7D81816FC2D008453D5 /* CLLocationManager+RACSignalSupport.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "CLLocationManager+RACSignalSupport.m"; sourceTree = "<group>"; };
 		6D97114B16F7C36600B50B57 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "Default-568h@2x.png"; path = "../Default-568h@2x.png"; sourceTree = "<group>"; };
 		6D97114D16F7C60A00B50B57 /* Parse.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Parse.framework; sourceTree = "<group>"; };
 		74D131E51582A7420065F1D2 /* Anywall-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Anywall-Info.plist"; sourceTree = "<group>"; };
@@ -207,6 +210,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		55BDC7DB1816FC38008453D5 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				55BDC7D71816FC2D008453D5 /* CLLocationManager+RACSignalSupport.h */,
+				55BDC7D81816FC2D008453D5 /* CLLocationManager+RACSignalSupport.m */,
+			);
+			name = Extensions;
+			sourceTree = "<group>";
+		};
 		E526A82D14F331D40074109C /* Assets */ = {
 			isa = PBXGroup;
 			children = (
@@ -287,6 +299,7 @@
 				E5743F2A14E3024B004BBD5C /* Models */,
 				E5AF78F514E0C25C005B6234 /* Views */,
 				E5CAAFF614D7342200D97A18 /* Controllers */,
+				55BDC7DB1816FC38008453D5 /* Extensions */,
 				E526A82D14F331D40074109C /* Assets */,
 				E56E83FD14D72E1100E856AB /* Supporting Files */,
 			);
@@ -408,7 +421,7 @@
 				LastUpgradeCheck = 0460;
 				ORGANIZATIONNAME = Parse;
 			};
-			buildConfigurationList = E56E83EC14D72E1100E856AB /* Build configuration list for PBXProject "Anywall" */;
+			buildConfigurationList = E56E83EC14D72E1100E856AB /* Build configuration list for PBXProject "AnyWall" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -498,6 +511,7 @@
 			files = (
 				E56E840314D72E1100E856AB /* main.m in Sources */,
 				E56E840714D72E1100E856AB /* PAWAppDelegate.m in Sources */,
+				55BDC7D91816FC2D008453D5 /* CLLocationManager+RACSignalSupport.m in Sources */,
 				E56E840A14D72E1100E856AB /* PAWWelcomeViewController.m in Sources */,
 				E5CAAFF414D733DC00D97A18 /* PAWWallViewController.m in Sources */,
 				E5458B6614D77BEA003BE4FF /* PAWSettingsViewController.m in Sources */,
@@ -777,7 +791,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		E56E83EC14D72E1100E856AB /* Build configuration list for PBXProject "Anywall" */ = {
+		E56E83EC14D72E1100E856AB /* Build configuration list for PBXProject "AnyWall" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				E56E840E14D72E1100E856AB /* Debug */,

@@ -20,6 +20,7 @@
 #import "PAWCircleView.h"
 #import "PAWPost.h"
 #import <CoreLocation/CoreLocation.h>
+#import "CLLocationManager+RACSignalSupport.h"
 
 // private methods and properties
 @interface PAWWallViewController ()
@@ -172,25 +173,52 @@
 			[NSUserDefaults.standardUserDefaults synchronize];
 		}];
 
+	self.locationManager = [[CLLocationManager alloc] init];
+	self.locationManager.delegate = self;
+	self.locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+	self.locationManager.distanceFilter = kCLLocationAccuracyNearestTenMeters;
+
+	// Signal to determine whether core location is authorized. Note that
+	// kCLAuthorizationStatusNotDetermined is considered to be authorized.
+	RACSignal *locationAuthorized = [self.locationManager.rac_authorizationStatusSignal
+		map:^(NSNumber *authorization) {
+			CLAuthorizationStatus status = authorization.unsignedIntegerValue;
+			return @(status == kCLAuthorizationStatusAuthorized || status == kCLAuthorizationStatusNotDetermined);
+		}];
+
+	// Disable the post button when core location is unauthorized.
+	RAC(self, navigationItem.rightBarButtonItem.enabled) = locationAuthorized;
+
+	// Start location updates only when authorized *and* when view is visible.
+	RACSignal *enableLocationUpdates = [[[RACSignal
+		merge:@[
+			[[self rac_signalForSelector:@selector(viewWillAppear:)] mapReplace:@YES],
+			[[self rac_signalForSelector:@selector(viewDidDisappear:)] mapReplace:@NO],
+		]]
+		combineLatestWith:locationAuthorized]
+		and];
+
+	// Switch on/off location updates based on conditions.
+	RACSignal *conditionalCurrentLocation = [RACSignal
+		if:enableLocationUpdates
+		then:self.locationManager.rac_activeLocationUpdatesSignal
+		else:[RACSignal never]];
+
+	RAC(self, currentLocation) = [conditionalCurrentLocation
+		catch:^(NSError *error) {
+			// Nothing we can do about this, propogate the error.
+			if (error.code == kCLErrorDenied) return [RACSignal error:error];
+
+			UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Error retrieving location" message:error.localizedDescription delegate:nil cancelButtonTitle:nil otherButtonTitles:@"Ok", nil];
+			[alert show];
+
+			// Silence the error.
+			return [RACSignal empty];
+		}];
+
 	// Bust any caching of which methods the delegate implements.
 	self.mapView.delegate = nil;
 	self.mapView.delegate = self;
-
-	[self startStandardUpdates];
-}
-
-- (void)viewWillAppear:(BOOL)animated {
-	[self.locationManager startUpdatingLocation];
-	[super viewWillAppear:animated];
-}
-
-- (void)viewDidDisappear:(BOOL)animated {
-	[self.locationManager stopUpdatingLocation];
-	[super viewDidDisappear:animated];
-}
-
-- (void)dealloc {
-	[self.locationManager stopUpdatingLocation];
 }
 
 #pragma mark - UINavigationBar-based actions
@@ -216,82 +244,6 @@
 	}];
 
 	[self.navigationController presentViewController:createPostViewController animated:YES completion:nil];
-}
-
-#pragma mark - CLLocationManagerDelegate methods and helpers
-
-- (void)startStandardUpdates {
-	if (nil == self.locationManager) {
-		self.locationManager = [[CLLocationManager alloc] init];
-	}
-
-	self.locationManager.delegate = self;
-	self.locationManager.desiredAccuracy = kCLLocationAccuracyBest;
-
-	// Set a movement threshold for new events.
-	self.locationManager.distanceFilter = kCLLocationAccuracyNearestTenMeters;
-
-	[self.locationManager startUpdatingLocation];
-
-	CLLocation *currentLocation = self.locationManager.location;
-	if (currentLocation) {
-		self.currentLocation = currentLocation;
-	}
-}
-
-- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
-	NSLog(@"%s", __PRETTY_FUNCTION__);
-	switch (status) {
-		case kCLAuthorizationStatusAuthorized:
-			NSLog(@"kCLAuthorizationStatusAuthorized");
-			// Re-enable the post button if it was disabled before.
-			self.navigationItem.rightBarButtonItem.enabled = YES;
-			[self.locationManager startUpdatingLocation];
-			break;
-		case kCLAuthorizationStatusDenied:
-			NSLog(@"kCLAuthorizationStatusDenied");
-			{{
-				UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Anywall can’t access your current location.\n\nTo view nearby posts or create a post at your current location, turn on access for Anywall to your location in the Settings app under Location Services." message:nil delegate:self cancelButtonTitle:nil otherButtonTitles:@"Ok", nil];
-				[alertView show];
-				// Disable the post button.
-				self.navigationItem.rightBarButtonItem.enabled = NO;
-			}}
-			break;
-		case kCLAuthorizationStatusNotDetermined:
-			NSLog(@"kCLAuthorizationStatusNotDetermined");
-			break;
-		case kCLAuthorizationStatusRestricted:
-			NSLog(@"kCLAuthorizationStatusRestricted");
-			break;
-	}
-}
-
-- (void)locationManager:(CLLocationManager *)manager
-    didUpdateToLocation:(CLLocation *)newLocation
-           fromLocation:(CLLocation *)oldLocation {
-	NSLog(@"%s", __PRETTY_FUNCTION__);
-
-	self.currentLocation = newLocation;
-}
-
-- (void)locationManager:(CLLocationManager *)manager
-       didFailWithError:(NSError *)error {
-	NSLog(@"%s", __PRETTY_FUNCTION__);
-	NSLog(@"Error: %@", [error description]);
-
-	if (error.code == kCLErrorDenied) {
-		[self.locationManager stopUpdatingLocation];
-	} else if (error.code == kCLErrorLocationUnknown) {
-		// todo: retry?
-		// set a timer for five seconds to cycle location, and if it fails again, bail and tell the user.
-	} else {
-		UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Error retrieving location"
-		                                                message:[error description]
-		                                               delegate:nil
-		                                      cancelButtonTitle:nil
-		                                      otherButtonTitles:@"Ok", nil];
-		[alert show];
-	}
 }
 
 #pragma mark - MKMapViewDelegate methods
