@@ -8,6 +8,7 @@
 
 #import <ReactiveCocoa/ReactiveCocoa.h>
 #import <ReactiveCocoa/EXTScope.h>
+#import <Parse-RACExtensions/PFQuery+RACExtensions.h>
 
 #import "PAWWallViewController.h"
 
@@ -30,7 +31,7 @@
 @property (nonatomic, assign) BOOL trackCurrentLocation;
 
 // posts:
-@property (nonatomic, strong) NSMutableArray *allPosts;
+@property (nonatomic, strong) NSArray *allPosts;
 
 @property (nonatomic, assign) CLLocationAccuracy filterDistance;
 @property (nonatomic, strong) CLLocation *currentLocation;
@@ -38,14 +39,6 @@
 @end
 
 @implementation PAWWallViewController
-
-- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
-	self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-	if (self != nil) {
-		_allPosts = [[NSMutableArray alloc] initWithCapacity:10];
-	}
-	return self;
-}
 
 #pragma mark - View lifecycle
 
@@ -122,9 +115,10 @@
 	RAC(self.searchRadius, radius) = RACObserve(self, filterDistance);
 
 	// Query for nearby posts when the location changes.
-	[self
+	RAC(self, allPosts) = [[self
 		rac_liftSelector:@selector(queryForAllPostsNearLocation:)
-		withSignals:RACObserve(self, currentLocation), nil];
+		withSignals:[RACObserve(self, currentLocation) ignore:nil], nil]
+		switchToLatest];
 
 	// Update pin state for nearby posts when either location or radius change.
 	[self
@@ -174,7 +168,8 @@
 	RAC(createPostViewController, currentLocation) = RACObserve(self, currentLocation);
 
 	[[[RACObserve(createPostViewController, createdPost) skip:1] takeLast:1] subscribeNext:^(id _) {
-		[self queryForAllPostsNearLocation:self.currentLocation];
+		// Assigning to currentLocation triggers requerying for nearby posts.
+		self.currentLocation = self.locationManager.location;
 		[self.wallPostsTableViewController loadObjects];
 	}];
 
@@ -334,29 +329,23 @@
 
 #pragma mark - Fetch map pins
 
-- (void)queryForAllPostsNearLocation:(CLLocation *)currentLocation {
-	PFQuery *query = [PFQuery queryWithClassName:kPAWParsePostsClassKey];
+- (RACSignal *)queryForAllPostsNearLocation:(CLLocation *)currentLocation {
+	return [RACSignal defer:^{
+		PFQuery *query = [PFQuery queryWithClassName:kPAWParsePostsClassKey];
 
-	if (currentLocation == nil) {
-		NSLog(@"%s got a nil location!", __PRETTY_FUNCTION__);
-	}
+		// If no objects are loaded in memory, we look to the cache first to fill the table
+		// and then subsequently do a query against the network.
+		if ([self.allPosts count] == 0) {
+			query.cachePolicy = kPFCachePolicyCacheThenNetwork;
+		}
 
-	// If no objects are loaded in memory, we look to the cache first to fill the table
-	// and then subsequently do a query against the network.
-	if ([self.allPosts count] == 0) {
-		query.cachePolicy = kPFCachePolicyCacheThenNetwork;
-	}
+		// Query for posts sort of kind of near our current location.
+		PFGeoPoint *point = [PFGeoPoint geoPointWithLatitude:currentLocation.coordinate.latitude longitude:currentLocation.coordinate.longitude];
+		[query whereKey:kPAWParseLocationKey nearGeoPoint:point withinKilometers:kPAWWallPostMaximumSearchDistance];
+		[query includeKey:kPAWParseUserKey];
+		query.limit = kPAWWallPostsSearch;
 
-	// Query for posts sort of kind of near our current location.
-	PFGeoPoint *point = [PFGeoPoint geoPointWithLatitude:currentLocation.coordinate.latitude longitude:currentLocation.coordinate.longitude];
-	[query whereKey:kPAWParseLocationKey nearGeoPoint:point withinKilometers:kPAWWallPostMaximumSearchDistance];
-	[query includeKey:kPAWParseUserKey];
-	query.limit = kPAWWallPostsSearch;
-
-	[query findObjectsInBackgroundWithBlock:^(NSArray *objects, NSError *error) {
-		if (error) {
-			NSLog(@"error in geo query!"); // todo why is this ever happening?
-		} else {
+		return [[query rac_findObjects] map:^(NSArray *objects) {
 			// We need to make new post objects from objects,
 			// and update allPosts and the map to reflect this new array.
 			// But we don't want to remove all annotations from the mapview blindly,
@@ -412,11 +401,11 @@
 			// and add newPosts to allPosts.
 			[self.mapView removeAnnotations:postsToRemove];
 			[self.mapView addAnnotations:newPosts];
-			[self.allPosts addObjectsFromArray:newPosts];
-			[self.allPosts removeObjectsInArray:postsToRemove];
 
 			self.mapPinsPlaced = YES;
-		}
+
+			return [allNewPosts copy];
+		}];
 	}];
 }
 
