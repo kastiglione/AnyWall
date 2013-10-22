@@ -7,6 +7,7 @@
 //
 
 #import <ReactiveCocoa/ReactiveCocoa.h>
+#import <ReactiveCocoa/EXTScope.h>
 
 #import "PAWWallViewController.h"
 
@@ -75,13 +76,44 @@
 											 initWithTitle:@"Settings" style:UIBarButtonItemStylePlain target:self action:@selector(settingsButtonSelected:)];
 	self.navigationItem.titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"Anywall.png"]];
 
-	self.mapView.region = MKCoordinateRegionMake(CLLocationCoordinate2DMake(37.332495f, -122.029095f), MKCoordinateSpanMake(0.008516f, 0.021801f));
-
 	self.trackCurrentLocation = YES;
+
+	@weakify(self);
 
 	RACSignal *currentCoordinate = [RACObserve(self, currentLocation) map:^(CLLocation* location) {
 		return [NSValue valueWithMKCoordinate:location.coordinate];
 	}];
+
+	RACSignal *currentRegion = [RACObserve(self, filterDistance) map:^(NSNumber *radius) {
+		@strongify(self);
+		CLLocationAccuracy diameter = 2 * radius.doubleValue;
+		MKCoordinateRegion region = MKCoordinateRegionMakeWithDistance(self.mapView.centerCoordinate, diameter, diameter);
+		return [NSValue valueWithBytes:&region objCType:@encode(MKCoordinateRegion)];
+	}];
+
+	// Helper function to update the map center or region, but only when the
+	// current location is being tracked.
+	void (^updateMapWhenTracking)(SEL, RACSignal *) = ^(SEL selector, RACSignal *property) {
+		RACSignal *trackedChanged = [property filter:^(id _) {
+			@strongify(self);
+			return self.trackCurrentLocation;
+		}];
+
+		[[self.mapView
+			rac_liftSelector:selector
+			withSignals:trackedChanged, [RACSignal return:@YES], nil]
+			subscribeNext:^(id x) {
+				// Ensure tracking state is maintained.
+				@strongify(self);
+				self.trackCurrentLocation = YES;
+			}];
+	};
+
+	// Update map center when location has changed, but only when tracking.
+	updateMapWhenTracking(@selector(setCenterCoordinate:animated:), currentCoordinate);
+
+	// Update map region when search radius has changed, but only when tracking.
+	updateMapWhenTracking(@selector(setRegion:animated:), currentRegion);
 
 	// Define search radius overlay.
 	self.searchRadius = [[PAWSearchRadius alloc] init];
@@ -123,43 +155,6 @@
 
 - (void)dealloc {
 	[self.locationManager stopUpdatingLocation];
-}
-
-#pragma mark - NSNotificationCenter notification handlers
-
-- (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
-	_filterDistance = filterDistance;
-
-	// If they panned the map since our last location update, don't recenter it.
-	if (self.trackCurrentLocation) {
-		// Set the map's region centered on their location at 2x filterDistance
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(self.currentLocation.coordinate, self.filterDistance * 2.0f, self.filterDistance * 2.0f);
-
-		[self.mapView setRegion:newRegion animated:YES];
-		self.trackCurrentLocation = YES;
-	} else {
-		// Just zoom to the new search radius (or maybe don't even do that?)
-		MKCoordinateRegion currentRegion = self.mapView.region;
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(currentRegion.center, self.filterDistance * 2.0f, self.filterDistance * 2.0f);
-
-		BOOL oldMapPannedValue = self.trackCurrentLocation;
-		[self.mapView setRegion:newRegion animated:YES];
-		self.trackCurrentLocation = oldMapPannedValue;
-	}
-}
-
-- (void)setCurrentLocation:(CLLocation *)currentLocation {
-	_currentLocation = currentLocation;
-
-	// If they panned the map since our last location update, don't recenter it.
-	if (self.trackCurrentLocation) {
-		// Set the map's region centered on their new location at 2x filterDistance
-		MKCoordinateRegion newRegion = MKCoordinateRegionMakeWithDistance(self.currentLocation.coordinate, self.filterDistance * 2.0f, self.filterDistance * 2.0f);
-
-		BOOL oldMapPannedValue = self.trackCurrentLocation;
-		[self.mapView setRegion:newRegion animated:YES];
-		self.trackCurrentLocation = oldMapPannedValue;
-	} // else do nothing.
 }
 
 #pragma mark - UINavigationBar-based actions
