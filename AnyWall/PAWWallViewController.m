@@ -89,6 +89,11 @@
 	RAC(self.searchRadius, coordinate) = currentCoordinate;
 	RAC(self.searchRadius, radius) = RACObserve(self, filterDistance);
 
+	// Update pin state for nearby posts when either location or radius change.
+	[self
+		rac_liftSelector:@selector(updatePostsForLocation:withNearbyDistance:)
+		withSignals:RACObserve(self, currentLocation), RACObserve(self, filterDistance), nil];
+
 	// Synchronize filter distance to user defaults.
 	RACSignal *filterDistanceUpdates = [[RACObserve(self, filterDistance) skip:1] distinctUntilChanged];
 	[[NSUserDefaults.standardUserDefaults
@@ -120,9 +125,6 @@
 - (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
 	_filterDistance = filterDistance;
 
-	// Update our pins for the new filter distance:
-	[self updatePostsForLocation:self.currentLocation withNearbyDistance:self.filterDistance];
-	
 	// If they panned the map since our last location update, don't recenter it.
 	if (self.trackCurrentLocation) {
 		// Set the map's region centered on their location at 2x filterDistance
@@ -156,8 +158,6 @@
 
 	// Update the map with new pins:
 	[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
-	// And update the existing pins to reflect any changes in filter distance:
-	[self updatePostsForLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 }
 
 #pragma mark - UINavigationBar-based actions
