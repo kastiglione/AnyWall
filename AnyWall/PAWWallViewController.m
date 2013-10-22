@@ -79,6 +79,15 @@
 
 	self.trackCurrentLocation = YES;
 
+	// Synchronize filter distance to user defaults.
+	RACSignal *filterDistanceUpdates = [[RACObserve(self, filterDistance) skip:1] distinctUntilChanged];
+	[[NSUserDefaults.standardUserDefaults
+		rac_liftSelector:@selector(setDouble:forKey:)
+		withSignals:filterDistanceUpdates, [RACSignal return:kPAWDefaultsFilterDistanceKey], nil]
+		subscribeNext:^(id _) {
+			[NSUserDefaults.standardUserDefaults synchronize];
+		}];
+
 	[self startStandardUpdates];
 }
 
@@ -100,10 +109,6 @@
 
 - (void)setFilterDistance:(CLLocationAccuracy)filterDistance {
 	_filterDistance = filterDistance;
-
-	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-	[userDefaults setDouble:self.filterDistance forKey:kPAWDefaultsFilterDistanceKey];
-	[userDefaults synchronize];
 
 	if (self.searchRadius == nil) {
 		self.searchRadius = [[PAWSearchRadius alloc] initWithCoordinate:self.currentLocation.coordinate radius:self.filterDistance];
