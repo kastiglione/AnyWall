@@ -16,6 +16,8 @@
 
 @property (nonatomic, strong) CLLocation *currentLocation;
 
+@property (nonatomic, strong, readonly) PFObject *createdPost;
+
 - (IBAction)cancelPost:(id)sender;
 - (IBAction)postPost:(id)sender;
 

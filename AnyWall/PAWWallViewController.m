@@ -74,8 +74,6 @@
 	self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
 											 initWithTitle:@"Settings" style:UIBarButtonItemStylePlain target:self action:@selector(settingsButtonSelected:)];
 	self.navigationItem.titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"Anywall.png"]];
-	
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(postWasCreated:) name:kPAWPostCreatedNotification object:nil];
 
 	self.mapView.region = MKCoordinateRegionMake(CLLocationCoordinate2DMake(37.332495f, -122.029095f), MKCoordinateSpanMake(0.008516f, 0.021801f));
 
@@ -96,8 +94,6 @@
 
 - (void)dealloc {
 	[self.locationManager stopUpdatingLocation];
-	
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWPostCreatedNotification object:nil];
 }
 
 #pragma mark - NSNotificationCenter notification handlers
@@ -164,10 +160,6 @@
 	[self updatePostsForLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 }
 
-- (void)postWasCreated:(NSNotification *)note {
-	[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
-}
-
 #pragma mark - UINavigationBar-based actions
 
 - (IBAction)settingsButtonSelected:(id)sender {
@@ -183,6 +175,12 @@
 - (IBAction)postButtonSelected:(id)sender {
 	PAWWallPostCreateViewController *createPostViewController = [[PAWWallPostCreateViewController alloc] initWithNibName:nil bundle:nil];
 	RAC(createPostViewController, currentLocation) = RACObserve(self, currentLocation);
+
+	[[[RACObserve(createPostViewController, createdPost) skip:1] takeLast:1] subscribeNext:^(id _) {
+		[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
+		[self.wallPostsTableViewController loadObjects];
+	}];
+
 	[self.navigationController presentViewController:createPostViewController animated:YES completion:nil];
 }
 

@@ -22,9 +22,6 @@ static NSString * const kPAWParseUsernameKey = @"username";
 static NSString * const kPAWParseTextKey = @"text";
 static NSString * const kPAWParseLocationKey = @"location";
 
-// Notification names:
-static NSString * const kPAWPostCreatedNotification = @"kPAWPostCreatedNotification";
-
 // UI strings:
 static NSString * const kPAWWallCantViewPost = @"Can’t view post! Get closer.";
 

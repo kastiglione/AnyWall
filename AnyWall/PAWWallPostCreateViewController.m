@@ -6,10 +6,17 @@
 //  Copyright (c) 2013 Parse. All rights reserved.
 //
 
+#import <ReactiveCocoa/ReactiveCocoa.h>
+#import <ReactiveCocoa/EXTScope.h>
+
 #import "PAWWallPostCreateViewController.h"
 
 #import "PAWAppDelegate.h"
 #import <Parse/Parse.h>
+
+@interface PAWWallPostCreateViewController ()
+@property (nonatomic, strong, readwrite) PFObject *createdPost;
+@end
 
 @implementation PAWWallPostCreateViewController
 
@@ -75,6 +82,8 @@
 	[readOnlyACL setPublicReadAccess:YES];
 	[readOnlyACL setPublicWriteAccess:NO];
 	[postObject setACL:readOnlyACL];
+
+	@weakify(postObject);
 	[postObject saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
 		if (error) {
 			NSLog(@"Couldn't save!");
@@ -86,9 +95,8 @@
 		if (succeeded) {
 			NSLog(@"Successfully saved!");
 			NSLog(@"%@", postObject);
-			dispatch_async(dispatch_get_main_queue(), ^{
-				[[NSNotificationCenter defaultCenter] postNotificationName:kPAWPostCreatedNotification object:nil];
-			});
+			@strongify(postObject);
+			self.createdPost = postObject;
 		} else {
 			NSLog(@"Failed to save.");
 		}

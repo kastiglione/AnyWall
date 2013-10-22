@@ -38,10 +38,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 
 @implementation PAWWallPostsTableViewController
 
-- (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self name:kPAWPostCreatedNotification object:nil];
-}
-
 - (id)initWithStyle:(UITableViewStyle)style {
 	self = [super initWithStyle:style];
 	if (self != nil) {
@@ -91,8 +87,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 		[self loadObjects];
 	}];
 
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(postWasCreated:) name:kPAWPostCreatedNotification object:nil];
-	
 	self.tableView.backgroundColor = [UIColor clearColor];
 	self.tableView.separatorColor = [UIColor clearColor];
 }
@@ -330,10 +324,6 @@ static NSUInteger const kPAWTableViewMainSection = 0;
 
 
 #pragma mark - ()
-
-- (void)postWasCreated:(NSNotification *)note {
-	[self loadObjects];
-}
 
 - (void)refreshControlValueChanged:(UIRefreshControl *)refreshControl {
     [self loadObjects];
