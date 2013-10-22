@@ -89,6 +89,11 @@
 	RAC(self.searchRadius, coordinate) = currentCoordinate;
 	RAC(self.searchRadius, radius) = RACObserve(self, filterDistance);
 
+	// Query for nearby posts when the location changes.
+	[self
+		rac_liftSelector:@selector(queryForAllPostsNearLocation:)
+		withSignals:RACObserve(self, currentLocation), nil];
+
 	// Update pin state for nearby posts when either location or radius change.
 	[self
 		rac_liftSelector:@selector(updatePostsForLocation:withNearbyDistance:)
@@ -155,9 +160,6 @@
 		[self.mapView setRegion:newRegion animated:YES];
 		self.trackCurrentLocation = oldMapPannedValue;
 	} // else do nothing.
-
-	// Update the map with new pins:
-	[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
 }
 
 #pragma mark - UINavigationBar-based actions
@@ -177,7 +179,7 @@
 	RAC(createPostViewController, currentLocation) = RACObserve(self, currentLocation);
 
 	[[[RACObserve(createPostViewController, createdPost) skip:1] takeLast:1] subscribeNext:^(id _) {
-		[self queryForAllPostsNearLocation:self.currentLocation withNearbyDistance:self.filterDistance];
+		[self queryForAllPostsNearLocation:self.currentLocation];
 		[self.wallPostsTableViewController loadObjects];
 	}];
 
@@ -337,7 +339,7 @@
 
 #pragma mark - Fetch map pins
 
-- (void)queryForAllPostsNearLocation:(CLLocation *)currentLocation withNearbyDistance:(CLLocationAccuracy)nearbyDistance {
+- (void)queryForAllPostsNearLocation:(CLLocation *)currentLocation {
 	PFQuery *query = [PFQuery queryWithClassName:kPAWParsePostsClassKey];
 
 	if (currentLocation == nil) {
@@ -405,7 +407,7 @@
 				CLLocation *objectLocation = [[CLLocation alloc] initWithLatitude:newPost.coordinate.latitude longitude:newPost.coordinate.longitude];
 				// if this post is outside the filter distance, don't show the regular callout.
 				CLLocationDistance distanceFromCurrent = [currentLocation distanceFromLocation:objectLocation];
-				[newPost setTitleAndSubtitleOutsideDistance:( distanceFromCurrent > nearbyDistance ? YES : NO )];
+				[newPost setTitleAndSubtitleOutsideDistance:( distanceFromCurrent > self.filterDistance )];
 				// Animate all pins after the initial load:
 				newPost.animatesDrop = self.mapPinsPlaced;
 			}
